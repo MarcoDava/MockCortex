@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useMutation } from "convex/react";
 import { API_BASE } from "@/lib/api";
+import { convexAddInterview } from "@/lib/convexFunctions";
 import type { Feedback, SessionResult, NeuralResult } from "@/types";
 
 const scoreBadgeClass = (score: number) => {
@@ -21,9 +23,10 @@ const FeedbackPage = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [sessionResults, setSessionResults] = useState<SessionResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [neuralState, setNeuralState] = useState<NeuralState>("idle");
   const [neuralResults, setNeuralResults] = useState<NeuralResult[] | null>(null);
+
+  const addInterview = useMutation(convexAddInterview);
 
   useEffect(() => {
     const loadFeedback = async () => {
@@ -32,6 +35,11 @@ const FeedbackPage = () => {
       );
       setSessionResults(sessionData);
       const voiceId = localStorage.getItem("selectedVoiceId") ?? "";
+      const character = (() => {
+        try {
+          return JSON.parse(localStorage.getItem("selectedCharacter") ?? "null") as { name?: string } | null;
+        } catch { return null; }
+      })();
 
       try {
         const res = await fetch(`${API_BASE}/api/get-feedback`, {
@@ -44,24 +52,34 @@ const FeedbackPage = () => {
         const fb = data.feedback ?? [];
         setFeedbacks(fb);
 
-        const history: unknown[] = JSON.parse(
-          localStorage.getItem("interviewHistory") ?? "[]"
-        );
         const avgScore =
           fb.length > 0
             ? Math.round(fb.reduce((sum, f) => sum + f.score, 0) / fb.length)
             : 0;
-        const newEntry = {
+
+        const entry = {
+          sessionId: localStorage.getItem("mockrot_session_id") ?? "",
           date: new Date().toLocaleString(),
           jobTitle: "Interview Session",
           avgScore,
           feedback: fb,
           questions: sessionData.map((s) => s.question),
+          characterName: character?.name,
         };
-        localStorage.setItem(
-          "interviewHistory",
-          JSON.stringify([newEntry, ...history])
-        );
+
+        // Persist to Convex (primary) with localStorage fallback
+        try {
+          await addInterview(entry);
+        } catch {
+          // Convex not configured — fall back to localStorage
+          const history: unknown[] = JSON.parse(
+            localStorage.getItem("interviewHistory") ?? "[]"
+          );
+          localStorage.setItem(
+            "interviewHistory",
+            JSON.stringify([entry, ...history])
+          );
+        }
       } catch {
         setFeedbacks([]);
       } finally {
@@ -69,7 +87,7 @@ const FeedbackPage = () => {
       }
     };
     loadFeedback();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const speakFeedback = async (text: string) => {
     const voiceId = localStorage.getItem("selectedVoiceId") ?? "";
@@ -82,35 +100,24 @@ const FeedbackPage = () => {
       if (!res.ok) return;
       const audio = new Audio(URL.createObjectURL(await res.blob()));
       audio.play();
-    } catch {
-      // Non-fatal
-    }
+    } catch { /* non-fatal */ }
   };
 
   const runNeuralAnalysis = async () => {
     setNeuralState("loading");
     const transcripts = sessionResults.map((s) => s.answer).filter(Boolean);
-    if (transcripts.length === 0) {
-      setNeuralState("unavailable");
-      return;
-    }
+    if (transcripts.length === 0) { setNeuralState("unavailable"); return; }
     try {
       const res = await fetch(`${API_BASE}/api/neural-engagement`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ transcripts }),
       });
-      if (!res.ok) throw new Error("Request failed");
-      const data = (await res.json()) as {
-        available: boolean;
-        results: NeuralResult[] | null;
-      };
-      if (!data.available || !data.results) {
-        setNeuralState("unavailable");
-      } else {
-        setNeuralResults(data.results);
-        setNeuralState("done");
-      }
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { available: boolean; results: NeuralResult[] | null };
+      if (!data.available || !data.results) { setNeuralState("unavailable"); return; }
+      setNeuralResults(data.results);
+      setNeuralState("done");
     } catch {
       setNeuralState("unavailable");
     }
@@ -133,7 +140,6 @@ const FeedbackPage = () => {
   return (
     <div className="min-h-screen p-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        {/* Header */}
         <div className="text-center space-y-2 mb-8">
           <h1 className="text-3xl font-bold text-white">Interview Feedback</h1>
           {feedbacks.length > 0 && (
@@ -146,7 +152,6 @@ const FeedbackPage = () => {
           )}
         </div>
 
-        {/* Gemini feedback cards */}
         {feedbacks.length === 0 ? (
           <p className="text-center text-gray-500">No feedback available.</p>
         ) : (
@@ -169,8 +174,6 @@ const FeedbackPage = () => {
               >
                 Hear Feedback
               </button>
-
-              {/* Neural analysis panel for this answer */}
               {neuralState === "done" && neuralResults?.[i] && (
                 <NeuralPanel result={neuralResults[i]} index={i} />
               )}
@@ -178,7 +181,7 @@ const FeedbackPage = () => {
           ))
         )}
 
-        {/* Neural analysis trigger */}
+        {/* Neural analysis */}
         {feedbacks.length > 0 && (
           <div className="rounded-xl border border-purple-800 bg-purple-950/30 p-6 space-y-4">
             <div className="flex items-center gap-3">
@@ -190,7 +193,6 @@ const FeedbackPage = () => {
                 </p>
               </div>
             </div>
-
             {neuralState === "idle" && (
               <button
                 onClick={runNeuralAnalysis}
@@ -199,32 +201,24 @@ const FeedbackPage = () => {
                 Run Neural Analysis
               </button>
             )}
-
             {neuralState === "loading" && (
               <div className="flex items-center gap-3 text-purple-300">
                 <span className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">
-                  Running TRIBE v2 brain analysis — this takes 20–60 s per answer…
-                </span>
+                <span className="text-sm">Running TRIBE v2 brain analysis — ~20–60 s per answer…</span>
               </div>
             )}
-
             {neuralState === "unavailable" && (
               <p className="text-sm text-gray-500">
                 Brain service unavailable. Start the Colab runner and set{" "}
                 <code className="text-purple-400">BRAIN_SERVICE_URL</code> in your backend.
               </p>
             )}
-
             {neuralState === "done" && (
-              <p className="text-sm text-green-400">
-                ✓ Neural analysis complete — brain maps shown inside each answer card above.
-              </p>
+              <p className="text-sm text-green-400">✓ Neural analysis complete — brain maps shown above.</p>
             )}
           </div>
         )}
 
-        {/* CTA */}
         <div className="flex justify-center pt-4">
           <Link
             to="/characters"
@@ -238,12 +232,7 @@ const FeedbackPage = () => {
   );
 };
 
-/* ── Neural panel rendered inside each answer card ── */
-interface NeuralPanelProps {
-  result: NeuralResult;
-  index: number;
-}
-
+interface NeuralPanelProps { result: NeuralResult; index: number; }
 const NeuralPanel = ({ result, index }: NeuralPanelProps) => (
   <div className="mt-4 border-t border-purple-900/50 pt-4 space-y-3">
     <div className="flex items-center gap-2">
@@ -254,23 +243,16 @@ const NeuralPanel = ({ result, index }: NeuralPanelProps) => (
         {result.score}/100
       </span>
     </div>
-
-    {/* 4-view brain image */}
     <img
       src={`data:image/png;base64,${result.brainImageBase64}`}
       alt={`Brain activation map for answer ${index + 1}`}
       className="w-full rounded-lg border border-purple-900/40"
     />
-
-    {/* Top activated regions */}
     <div className="space-y-1">
       <p className="text-purple-400 text-xs font-medium">Top activated regions</p>
       <div className="flex flex-wrap gap-2">
         {result.regions.map((r) => (
-          <span
-            key={r.name}
-            className="text-xs bg-purple-900/50 border border-purple-800 text-purple-200 px-2 py-0.5 rounded-full"
-          >
+          <span key={r.name} className="text-xs bg-purple-900/50 border border-purple-800 text-purple-200 px-2 py-0.5 rounded-full">
             {r.name}
           </span>
         ))}
