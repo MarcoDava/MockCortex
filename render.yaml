@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: mockrot-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: PORT
+        value: 10000
