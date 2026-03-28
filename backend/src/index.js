@@ -120,5 +120,23 @@ app.post('/api/get-feedback', async (req, res) => {
   }
 });
 
+// --- ROUTE: Clone Voice (Instant Voice Cloning) ---
+app.post('/api/clone-voice', async (req, res) => {
+  const { audioBase64, mimeType, characterName } = req.body;
+  try {
+    const buffer = Buffer.from(audioBase64, 'base64');
+    const blob = new Blob([buffer], { type: mimeType || 'audio/mpeg' });
+    const result = await elevenlabs.voices.ivc.create({
+      name: `MockRot - ${characterName}`,
+      files: [blob],
+      removeBackgroundNoise: true,
+    });
+    res.json({ voiceId: result.voiceId });
+  } catch (error) {
+    console.error('Voice Clone Error:', error);
+    res.status(500).json({ error: 'Voice cloning failed' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Backend: http://localhost:${PORT}`));
