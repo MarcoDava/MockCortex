@@ -1,0 +1,8 @@
+git+https://github.com/facebookresearch/tribev2.git
+fastapi
+uvicorn[standard]
+pyngrok
+nest_asyncio
+nilearn
+matplotlib
+huggingface_hub

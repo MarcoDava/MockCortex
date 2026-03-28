@@ -32,3 +32,14 @@ export interface EmotionResult {
   shouldInterrupt: boolean;
   message: string;
 }
+
+export interface BrainRegion {
+  name: string;
+  activation: number;
+}
+
+export interface NeuralResult {
+  score: number;
+  brainImageBase64: string;
+  regions: BrainRegion[];
+}

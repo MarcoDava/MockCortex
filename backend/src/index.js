@@ -120,6 +120,38 @@ app.post('/api/get-feedback', async (req, res) => {
   }
 });
 
+// --- ROUTE: Neural Engagement (proxies to TRIBE v2 brain service) ---
+app.post('/api/neural-engagement', async (req, res) => {
+  const brainServiceUrl = process.env.BRAIN_SERVICE_URL;
+  if (!brainServiceUrl) {
+    return res.json({ available: false, results: null });
+  }
+
+  const { transcripts } = req.body; // string[]
+  if (!Array.isArray(transcripts) || transcripts.length === 0) {
+    return res.status(400).json({ error: 'transcripts must be a non-empty array' });
+  }
+
+  try {
+    const results = await Promise.all(
+      transcripts.map(async (text) => {
+        const r = await fetch(`${brainServiceUrl}/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+          signal: AbortSignal.timeout(120_000), // 2 min per answer
+        });
+        if (!r.ok) throw new Error(`Brain service error: ${r.status}`);
+        return r.json();
+      })
+    );
+    res.json({ available: true, results });
+  } catch (error) {
+    console.error('Neural Engagement Error:', error);
+    res.json({ available: false, results: null });
+  }
+});
+
 // --- ROUTE: Clone Voice (Instant Voice Cloning) ---
 app.post('/api/clone-voice', async (req, res) => {
   const { audioBase64, mimeType, characterName } = req.body;
