@@ -6,111 +6,211 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 dotenv.config();
 
-
 const app = express();
-app.use(cors()); // Allows your React frontend to talk to this server
-app.use(express.json());
+
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    /\.vercel\.app$/,
+    /\.onrender\.com$/,
+  ],
+}));
+app.use(express.json({ limit: '25mb' }));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
 
 const PERSONAS = {
-  'JBFqnCBsd6RMkjVDRZzb': "Skibidi Toilet (Brainrot king, uses gyatt, rizz, sigma. A chaotic genius coach)",
-  'ErXwobaYiN019PkySvjV': "Donald Trump (Confident, uses 'huge', 'tremendous', focuses on winning and 67 deals)",
-  'EXAVITQu4vr4xnSDxMaL': "Tung Tung Sahur (High energy, energetic drumming sounds like 'Tung Tung', sincere but loud)"
+  'JBFqnCBsd6RMkjVDRZzb': "Skibidi Toilet (Brainrot king, uses gyatt/rizz/sigma, chaotic genius coach)",
+  'ErXwobaYiN019PkySvjV': "Donald Trump (Confident, uses 'huge'/'tremendous', focuses on winning)",
+  'EXAVITQu4vr4xnSDxMaL': "Tung Tung Sahur (High energy, drumming sounds like 'Tung Tung', sincere but loud)",
 };
 
-
-
-// In your backend/index.js
+// --- ROUTE: Text to Speech ---
 app.post('/api/ask-question', async (req, res) => {
-  const { question, voiceId } = req.body; // Receive the voiceId from frontend
-  
+  const { question, voiceId } = req.body;
   try {
     const audio = await elevenlabs.textToSpeech.convert(voiceId || 'JBFqnCBsd6RMkjVDRZzb', {
       text: question,
       modelId: 'eleven_turbo_v2_5',
     });
-
     res.setHeader('Content-Type', 'audio/mpeg');
     for await (const chunk of audio) {
       res.write(chunk);
     }
     res.end();
   } catch (error) {
-    console.error("ElevenLabs Error:", error);
+    console.error('ElevenLabs Error:', error);
     res.status(500).send('Audio failed');
   }
 });
 
-// 1. Generate Questions
-// --- ROUTE 1: GENERATE QUESTIONS ---
-app.post('/api/generate-questions', async (req, res) => {
-  const { jobDescription, voiceId } = req.body;
-  const currentPersona = PERSONAS[voiceId] || "a professional interviewer";
-
+// --- ROUTE: Parse Resume ---
+app.post('/api/parse-resume', async (req, res) => {
+  const { fileBase64, mimeType } = req.body;
+  if (!fileBase64) return res.status(400).json({ error: 'No file provided' });
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-    
-    const prompt = `You are ${currentPersona}. 
-    Based on this job description: ${jobDescription}, generate exactly 3 interview questions. mix some behavioural and technical questions, not all technical. 
-    Return ONLY a JSON array: [{"question": "text", "type": "technical"}]
-    Speak in your character's voice using your specific slang and personality.
-    Do not make the questions too hard, but make them specific to the job description.`;
-
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json|```/g, "").trim();
-    res.json({ questions: JSON.parse(text) });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `Extract structured information from this resume. Return ONLY JSON: {"name":"full name or empty string","skills":["up to 10 key skills"],"experience":"2-3 sentence summary of work experience","education":"highest degree and field, or empty string","highlights":["up to 3 notable achievements or projects"]}`;
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { mimeType: mimeType || 'application/pdf', data: fileBase64 } },
+    ]);
+    const text = result.response.text().replace(/```json|```/g, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return res.status(500).json({ error: 'Failed to parse resume' });
+    }
+    res.json(parsed);
   } catch (error) {
-    console.error("Question Gen Error:", error);
+    console.error('Resume Parse Error:', error);
+    res.status(500).json({ error: 'Failed to parse resume' });
+  }
+});
+
+// --- ROUTE: Generate Questions ---
+app.post('/api/generate-questions', async (req, res) => {
+  const { jobDescription, voiceId, resumeSummary } = req.body;
+  const persona = PERSONAS[voiceId] || 'a professional interviewer';
+  const resumeContext = resumeSummary
+    ? `\nCandidate resume summary: skills: ${resumeSummary.skills?.join(', ') || 'unknown'}. Experience: ${resumeSummary.experience || 'unknown'}. Education: ${resumeSummary.education || 'unknown'}. Highlights: ${resumeSummary.highlights?.join('; ') || 'none'}.`
+    : '';
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `You are ${persona} conducting a realistic job interview.${resumeContext}
+
+Job description: ${jobDescription}
+
+Generate exactly 5 interview questions following this realistic interview structure:
+1. Intro: A warm "tell me about yourself" style opener (type: "intro")
+2. Resume: A specific question referencing the candidate's actual background${resumeSummary ? ' from their resume' : ''} (type: "resume")
+3. Behavioral: A STAR-format behavioral question relevant to the role (type: "behavioral")
+4. Technical: A technical or skills-based question for the role (type: "technical")
+5. Situational: A "what would you do if..." scenario question (type: "situational")
+
+Stay in character throughout. Return ONLY JSON: [{"question":"text","type":"intro|resume|behavioral|technical|situational"}]`;
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().replace(/```json|```/g, '').trim();
+    let questions;
+    try {
+      questions = JSON.parse(text);
+    } catch {
+      return res.status(500).json({ error: 'Failed to parse questions from AI response' });
+    }
+    res.json({ questions });
+  } catch (error) {
+    console.error('Question Gen Error:', error);
     res.status(500).json({ error: 'Failed to generate questions' });
   }
 });
 
-// 2. Stream AI Voice
-app.post('/api/ask-question', async (req, res) => {
-  const { question } = req.body;
+// --- ROUTE: Analyze Emotion from Webcam Frame ---
+app.post('/api/analyze-emotion', async (req, res) => {
+  const { imageBase64, voiceId } = req.body;
+  const persona = PERSONAS[voiceId] || 'a professional interviewer';
   try {
-    const audio = await elevenlabs.textToSpeech.convert(VOICE_ID, {
-      text: question,
-      modelId: 'eleven_turbo_v2_5',
-    });
-    res.setHeader('Content-Type', 'audio/mpeg');
-    for await (const chunk of audio) { res.write(chunk); }
-    res.end();
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const prompt = `You are ${persona} watching a job interview candidate via webcam. Analyze their facial expression. Return ONLY JSON: {"emotion":"one word","shouldInterrupt":true|false,"message":"if shouldInterrupt, a brief in-character comment under 20 words, else empty string"}. Set shouldInterrupt to true only if they look clearly distressed, panicked, confused, or blank. Be lenient.`;
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: imageBase64,
+        },
+      },
+    ]);
+    const text = result.response.text().replace(/```json|```/g, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return res.json({ emotion: 'neutral', shouldInterrupt: false, message: '' });
+    }
+    res.json(parsed);
   } catch (error) {
-    res.status(500).send('Audio failed');
+    console.error('Emotion Analysis Error:', error);
+    // Non-fatal: return neutral so interview continues
+    res.json({ emotion: 'neutral', shouldInterrupt: false, message: '' });
   }
 });
 
-// 3. Generate Final Feedback
+// --- ROUTE: Get Feedback ---
 app.post('/api/get-feedback', async (req, res) => {
-  const { sessionData, voiceId } = req.body;
-  // Define persona context based on voiceId
-  const personas = {
-    'JBFqnCBsd6RMkjVDRZzb': "Skibidi Toilet (Brainrot king, uses gyatt/rizz/sigma, but secretly a genius coach)",
-    'ErXwobaYiN019PkySvjV': "Donald Trump (Confident, uses 'huge/tremendous', focuses on winning, says 67 often)",
-    'EXAVITQu4vr4xnSDxMaL': "Tung Tung Sahur (High energy, energetic drumming sounds, sincere but loud)"
-  };
-
-  const currentPersona = personas[voiceId] || "Professional Interviewer";
-
-  
-
+  const { sessionData, voiceId, resumeSummary } = req.body;
+  const persona = PERSONAS[voiceId] || 'a professional interviewer';
+  const resumeContext = resumeSummary
+    ? ` The candidate's resume shows: ${resumeSummary.experience || ''}. Skills: ${resumeSummary.skills?.join(', ') || ''}.`
+    : '';
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-    const prompt = `You are ${currentPersona}. Review these interview answers: ${JSON.stringify(sessionData)}.
-  1. Be professional and sincere. 
-  2. Be specific about what words or phrases were weak.
-  3. Speak in your character's voice (add slang or personality).
-  4. Return a JSON array: [{"score": 0-10, "critique": "Detailed text..."}]`;
-    
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `You are ${persona}.${resumeContext} Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be encouraging and generous — a decent answer with correct intent scores at least 6. Reserve scores below 4 only for completely wrong or empty answers. If a resume was provided, note whether the answer aligns with their stated experience. Speak in character. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
     const result = await model.generateContent(prompt);
-    const text = result.response.text().replace(/```json|```/g, "").trim();
-    res.json({ feedback: JSON.parse(text) });
+    const text = result.response.text().replace(/```json|```/g, '').trim();
+    let feedback;
+    try {
+      feedback = JSON.parse(text);
+    } catch {
+      return res.status(500).json({ error: 'Failed to parse feedback from AI response' });
+    }
+    res.json({ feedback });
   } catch (error) {
+    console.error('Feedback Error:', error);
     res.status(500).json({ error: 'Feedback failed' });
   }
 });
 
-app.listen(3000, () => console.log('🚀 Backend: http://localhost:3000'));
+// --- ROUTE: Neural Engagement (proxies to TRIBE v2 brain service) ---
+app.post('/api/neural-engagement', async (req, res) => {
+  const brainServiceUrl = process.env.BRAIN_SERVICE_URL;
+  if (!brainServiceUrl) {
+    return res.json({ available: false, results: null });
+  }
+
+  const { transcripts } = req.body; // string[]
+  if (!Array.isArray(transcripts) || transcripts.length === 0) {
+    return res.status(400).json({ error: 'transcripts must be a non-empty array' });
+  }
+
+  try {
+    const results = await Promise.all(
+      transcripts.map(async (text) => {
+        const r = await fetch(`${brainServiceUrl}/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+          signal: AbortSignal.timeout(120_000), // 2 min per answer
+        });
+        if (!r.ok) throw new Error(`Brain service error: ${r.status}`);
+        return r.json();
+      })
+    );
+    res.json({ available: true, results });
+  } catch (error) {
+    console.error('Neural Engagement Error:', error);
+    res.json({ available: false, results: null });
+  }
+});
+
+// --- ROUTE: Clone Voice (Instant Voice Cloning) ---
+app.post('/api/clone-voice', async (req, res) => {
+  const { audioBase64, mimeType, characterName } = req.body;
+  try {
+    const buffer = Buffer.from(audioBase64, 'base64');
+    const blob = new Blob([buffer], { type: mimeType || 'audio/mpeg' });
+    const result = await elevenlabs.voices.ivc.create({
+      name: `MockRot - ${characterName}`,
+      files: [blob],
+      removeBackgroundNoise: true,
+    });
+    res.json({ voiceId: result.voiceId });
+  } catch (error) {
+    console.error('Voice Clone Error:', error);
+    res.status(500).json({ error: 'Voice cloning failed' });
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 Backend: http://localhost:${PORT}`));
