@@ -42,10 +42,16 @@ const FeedbackPage = () => {
       })();
 
       try {
+        const resumeSummary = (() => {
+          try {
+            const raw = localStorage.getItem("resumeSummary");
+            return raw ? JSON.parse(raw) : undefined;
+          } catch { return undefined; }
+        })();
         const res = await fetch(`${API_BASE}/api/get-feedback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionData, voiceId }),
+          body: JSON.stringify({ sessionData, voiceId, resumeSummary }),
         });
         if (!res.ok) throw new Error("Feedback request failed");
         const data = (await res.json()) as { feedback: Feedback[] };

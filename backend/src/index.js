@@ -15,7 +15,7 @@ app.use(cors({
     /\.onrender\.com$/,
   ],
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
@@ -45,13 +45,52 @@ app.post('/api/ask-question', async (req, res) => {
   }
 });
 
-// --- ROUTE: Generate Questions ---
-app.post('/api/generate-questions', async (req, res) => {
-  const { jobDescription, voiceId } = req.body;
-  const persona = PERSONAS[voiceId] || 'a professional interviewer';
+// --- ROUTE: Parse Resume ---
+app.post('/api/parse-resume', async (req, res) => {
+  const { fileBase64, mimeType } = req.body;
+  if (!fileBase64) return res.status(400).json({ error: 'No file provided' });
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `You are ${persona}. Generate exactly 3 interview questions (mix behavioral and technical) for this job: ${jobDescription}. Speak in character. Return ONLY JSON: [{"question":"text","type":"behavioral|technical"}]`;
+    const prompt = `Extract structured information from this resume. Return ONLY JSON: {"name":"full name or empty string","skills":["up to 10 key skills"],"experience":"2-3 sentence summary of work experience","education":"highest degree and field, or empty string","highlights":["up to 3 notable achievements or projects"]}`;
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { mimeType: mimeType || 'application/pdf', data: fileBase64 } },
+    ]);
+    const text = result.response.text().replace(/```json|```/g, '').trim();
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return res.status(500).json({ error: 'Failed to parse resume' });
+    }
+    res.json(parsed);
+  } catch (error) {
+    console.error('Resume Parse Error:', error);
+    res.status(500).json({ error: 'Failed to parse resume' });
+  }
+});
+
+// --- ROUTE: Generate Questions ---
+app.post('/api/generate-questions', async (req, res) => {
+  const { jobDescription, voiceId, resumeSummary } = req.body;
+  const persona = PERSONAS[voiceId] || 'a professional interviewer';
+  const resumeContext = resumeSummary
+    ? `\nCandidate resume summary: skills: ${resumeSummary.skills?.join(', ') || 'unknown'}. Experience: ${resumeSummary.experience || 'unknown'}. Education: ${resumeSummary.education || 'unknown'}. Highlights: ${resumeSummary.highlights?.join('; ') || 'none'}.`
+    : '';
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const prompt = `You are ${persona} conducting a realistic job interview.${resumeContext}
+
+Job description: ${jobDescription}
+
+Generate exactly 5 interview questions following this realistic interview structure:
+1. Intro: A warm "tell me about yourself" style opener (type: "intro")
+2. Resume: A specific question referencing the candidate's actual background${resumeSummary ? ' from their resume' : ''} (type: "resume")
+3. Behavioral: A STAR-format behavioral question relevant to the role (type: "behavioral")
+4. Technical: A technical or skills-based question for the role (type: "technical")
+5. Situational: A "what would you do if..." scenario question (type: "situational")
+
+Stay in character throughout. Return ONLY JSON: [{"question":"text","type":"intro|resume|behavioral|technical|situational"}]`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
     let questions;
@@ -100,11 +139,14 @@ app.post('/api/analyze-emotion', async (req, res) => {
 
 // --- ROUTE: Get Feedback ---
 app.post('/api/get-feedback', async (req, res) => {
-  const { sessionData, voiceId } = req.body;
+  const { sessionData, voiceId, resumeSummary } = req.body;
   const persona = PERSONAS[voiceId] || 'a professional interviewer';
+  const resumeContext = resumeSummary
+    ? ` The candidate's resume shows: ${resumeSummary.experience || ''}. Skills: ${resumeSummary.skills?.join(', ') || ''}.`
+    : '';
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `You are ${persona}. Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be encouraging and generous — a decent answer with correct intent scores at least 6. Reserve scores below 4 only for completely wrong or empty answers. Speak in character. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
+    const prompt = `You are ${persona}.${resumeContext} Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be encouraging and generous — a decent answer with correct intent scores at least 6. Reserve scores below 4 only for completely wrong or empty answers. If a resume was provided, note whether the answer aligns with their stated experience. Speak in character. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
     let feedback;

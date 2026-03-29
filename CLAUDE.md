@@ -169,12 +169,13 @@ All routes are in `backend/src/index.js`. The backend runs on port 3000 in devel
 
 | Endpoint | Method | Request Body | Response |
 |----------|--------|-------------|----------|
-| `/api/generate-questions` | POST | `{ jobDescription, voiceId }` | `{ questions: [{question, type}] }` |
+| `/api/generate-questions` | POST | `{ jobDescription, voiceId, resumeSummary? }` | `{ questions: [{question, type}] }` (5 questions) |
 | `/api/ask-question` | POST | `{ question, voiceId }` | MP3 audio stream |
-| `/api/get-feedback` | POST | `{ sessionData, voiceId }` | `{ feedback: [{score, critique}] }` |
+| `/api/get-feedback` | POST | `{ sessionData, voiceId, resumeSummary? }` | `{ feedback: [{score, critique}] }` |
 | `/api/analyze-emotion` | POST | `{ imageBase64, voiceId }` | `{ emotion, shouldInterrupt, message }` |
 | `/api/clone-voice` | POST | `{ audioBase64, mimeType, characterName }` | `{ voiceId }` |
 | `/api/neural-engagement` | POST | `{ transcripts: string[] }` | `{ available, results }` |
+| `/api/parse-resume` | POST | `{ fileBase64, mimeType }` | `{ name, skills, experience, education, highlights }` |
 
 ---
 
@@ -205,8 +206,9 @@ index: by_session on sessionId
 | `selectedVoiceId` | ElevenLabs voice ID (default or cloned) |
 | `selectedCharacter` | Full character object `{id, name, img, description, key}` |
 | `clonedVoice_{key}` | Cloned ElevenLabs voice ID per character |
-| `interviewQuestions` | Array of `{question, type}` for current session |
+| `interviewQuestions` | Array of `{question, type}` for current session (5 questions) |
 | `sessionResults` | Array of `{question, answer}` from current interview |
+| `resumeSummary` | Parsed resume `{name, skills, experience, education, highlights}` (optional) |
 | `interviewHistory` | localStorage fallback (used only when Convex is unavailable) |
 
 ---

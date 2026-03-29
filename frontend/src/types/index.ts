@@ -33,6 +33,14 @@ export interface EmotionResult {
   message: string;
 }
 
+export interface ResumeSummary {
+  name?: string;
+  skills: string[];
+  experience: string;
+  education?: string;
+  highlights?: string[];
+}
+
 export interface BrainRegion {
   name: string;
   activation: number;
