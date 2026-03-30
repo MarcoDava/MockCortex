@@ -50,6 +50,7 @@ const CharactersPage = () => {
   const [cloningKey, setCloningKey] = useState<string | null>(null);
   const [cloneError, setCloneError] = useState<string | null>(null);
   const [clonedVoices, setClonedVoices] = useState<Record<string, string>>(loadClonedVoices);
+  const [ytUrls, setYtUrls] = useState<Record<string, string>>({});
 
   const effectiveVoiceId = (char: Character) => clonedVoices[char.key] ?? char.id;
 
@@ -73,6 +74,32 @@ const CharactersPage = () => {
       new Audio(URL.createObjectURL(blob)).play();
     } catch {
       // Non-fatal
+    }
+  };
+
+  const handleYouTubeClone = async (char: Character) => {
+    const url = ytUrls[char.key]?.trim();
+    if (!url) return;
+    setCloneError(null);
+    setCloningKey(char.key);
+    try {
+      const res = await fetch(`${API_BASE}/api/clone-voice-youtube`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ youtubeUrl: url, characterName: char.name }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "Clone failed");
+      }
+      const data = (await res.json()) as { voiceId: string };
+      localStorage.setItem(`clonedVoice_${char.key}`, data.voiceId);
+      setClonedVoices((prev) => ({ ...prev, [char.key]: data.voiceId }));
+      setYtUrls((prev) => ({ ...prev, [char.key]: "" }));
+    } catch (e) {
+      setCloneError(e instanceof Error ? e.message : `Failed to clone ${char.name}'s voice.`);
+    } finally {
+      setCloningKey(null);
     }
   };
 
@@ -206,6 +233,27 @@ const CharactersPage = () => {
                   >
                     {hasClone ? "Replace voice sample" : "Upload voice sample"}
                   </button>
+
+                  {/* YouTube URL clone */}
+                  <div className="flex gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="youtube.com/watch?v=..."
+                      value={ytUrls[char.key] ?? ""}
+                      onChange={(e) => setYtUrls((prev) => ({ ...prev, [char.key]: e.target.value }))}
+                      disabled={isCloning}
+                      className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-violet-500/60 disabled:opacity-40"
+                    />
+                    <button
+                      onClick={() => handleYouTubeClone(char)}
+                      disabled={isCloning || !ytUrls[char.key]?.trim()}
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-red-600/80 hover:bg-red-500 text-white text-xs font-semibold transition-colors disabled:opacity-40 cursor-pointer"
+                    >
+                      {isCloning ? (
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                      ) : "YT"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Select arrow hint */}
