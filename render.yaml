@@ -4,7 +4,7 @@ services:
     env: node
     rootDir: backend
     buildCommand: npm install
-    startCommand: npm start
+    startCommand: node src/index.js
     envVars:
       - key: GEMINI_API_KEY
         sync: false
