@@ -9,10 +9,10 @@ function App() {
     <div className="m-0 p-0 w-[100vw] h-full min-h-[100vh] flex flex-col text-white">
       <Navbar />
       <HexagonBackground glowColor="rgba(139, 92, 246, 0.5)" />
-      <div className="w-full z-10 flex-1 pt-24">
+      <div className="w-full z-10 flex-1 pt-24 pointer-events-none">
         <Outlet />
       </div>
-      <div className="w-full z-10">
+      <div className="w-full z-10 pointer-events-none">
         <Footer />
       </div>
     </div>

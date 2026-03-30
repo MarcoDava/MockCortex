@@ -11,7 +11,7 @@ const steps = [
 
 const HomePage = () => {
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 pb-20">
+    <div className="min-h-screen flex flex-col items-center px-4 pb-20 pointer-events-auto">
       {/* Hero */}
       <motion.section
         initial={{ opacity: 0, y: 30 }}
