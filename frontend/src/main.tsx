@@ -11,12 +11,13 @@ if (!localStorage.getItem('mockrot_session_id')) {
   localStorage.setItem('mockrot_session_id', crypto.randomUUID())
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string)
+const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined
+const convex = convexUrl ? new ConvexReactClient(convexUrl) : null
+
+const app = <RouterProvider router={router} />
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConvexProvider client={convex}>
-      <RouterProvider router={router} />
-    </ConvexProvider>
+    {convex ? <ConvexProvider client={convex}>{app}</ConvexProvider> : app}
   </StrictMode>,
 )
