@@ -6,7 +6,6 @@ import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 import { readFile, unlink, readdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import ytDlp from 'yt-dlp-exec';
 
 dotenv.config();
 
@@ -229,6 +228,7 @@ app.post('/api/clone-voice-youtube', async (req, res) => {
   const base = join(tmp, `mockrot-yt-${Date.now()}`);
 
   try {
+    const { default: ytDlp } = await import('yt-dlp-exec');
     // Download first 90 seconds of audio as MP3 via yt-dlp + ffmpeg
     await ytDlp(youtubeUrl, {
       output: `${base}.%(ext)s`,
