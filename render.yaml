@@ -3,7 +3,7 @@ services:
     name: mockcortex-backend
     env: node
     rootDir: backend
-    buildCommand: apt-get install -y ffmpeg && npm install
+    buildCommand: apt-get update && apt-get install -y ffmpeg && npm cache clean --force && rm -rf node_modules && npm ci
     startCommand: node src/index.js
     envVars:
       - key: GEMINI_API_KEY
