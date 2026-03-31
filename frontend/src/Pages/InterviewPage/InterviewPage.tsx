@@ -268,7 +268,7 @@ const InterviewPage = () => {
   const q = questions[currentIdx];
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-white">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-white pointer-events-auto">
       <div className="max-w-3xl w-full">
         {/* Header */}
         <p className="text-center text-gray-400 mb-2 text-sm">

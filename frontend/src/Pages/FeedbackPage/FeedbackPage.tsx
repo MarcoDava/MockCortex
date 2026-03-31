@@ -144,7 +144,7 @@ const FeedbackPage = () => {
       : 0;
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 pointer-events-auto">
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="text-center space-y-2 mb-8">
           <h1 className="text-3xl font-bold text-white">Interview Feedback</h1>

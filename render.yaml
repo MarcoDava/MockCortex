@@ -3,7 +3,7 @@ services:
     name: mockrot-backend
     env: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: apt-get install -y ffmpeg && npm install
     startCommand: node src/index.js
     envVars:
       - key: GEMINI_API_KEY

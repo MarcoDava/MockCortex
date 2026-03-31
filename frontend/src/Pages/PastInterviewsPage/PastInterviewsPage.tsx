@@ -61,7 +61,7 @@ const PastInterviewsPage = () => {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 pointer-events-auto">
       <div className="max-w-3xl mx-auto space-y-4">
         <h1 className="text-3xl font-bold text-white mb-8">Past Interviews</h1>
 

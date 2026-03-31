@@ -3,6 +3,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
+import { readFile, unlink, readdir } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 dotenv.config();
 
@@ -209,6 +212,60 @@ app.post('/api/clone-voice', async (req, res) => {
   } catch (error) {
     console.error('Voice Clone Error:', error);
     res.status(500).json({ error: 'Voice cloning failed' });
+  }
+});
+
+// --- ROUTE: Clone Voice from YouTube URL ---
+app.post('/api/clone-voice-youtube', async (req, res) => {
+  const { youtubeUrl, characterName } = req.body;
+
+  // Validate YouTube URL
+  if (!youtubeUrl || !/^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be\/)/.test(youtubeUrl)) {
+    return res.status(400).json({ error: 'Please provide a valid YouTube URL.' });
+  }
+
+  const tmp = tmpdir();
+  const base = join(tmp, `mockrot-yt-${Date.now()}`);
+
+  try {
+    const { default: ytDlp } = await import('yt-dlp-exec');
+    // Download first 90 seconds of audio as MP3 via yt-dlp + ffmpeg
+    await ytDlp(youtubeUrl, {
+      output: `${base}.%(ext)s`,
+      extractAudio: true,
+      audioFormat: 'mp3',
+      audioQuality: '5',           // medium quality — enough for voice cloning
+      downloadSections: '*0-90',   // first 90 seconds only
+      noPlaylist: true,
+      noCheckCertificates: true,
+    });
+
+    // Find the downloaded file — yt-dlp replaces %(ext)s with the actual extension
+    const stamp = base.split('/').at(-1);
+    const files = await readdir(tmp);
+    const audioFile = files.find((f) => f.startsWith(stamp ?? '') && f.endsWith('.mp3'));
+    if (!audioFile) throw new Error('Audio file not found after download');
+    const audioPath = join(tmp, audioFile);
+    const audioBuffer = await readFile(audioPath);
+    await unlink(audioPath).catch(() => {});
+
+    const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+    const result = await elevenlabs.voices.ivc.create({
+      name: `MockRot - ${characterName}`,
+      files: [blob],
+      removeBackgroundNoise: true,
+    });
+
+    res.json({ voiceId: result.voiceId });
+  } catch (error) {
+    console.error('YouTube Voice Clone Error:', error);
+    // Clean up any leftover temp files
+    readdir(tmp)
+      .then((files) => files
+        .filter((f) => f.startsWith('mockrot-yt-'))
+        .forEach((f) => unlink(join(tmp, f)).catch(() => {})))
+      .catch(() => {});
+    res.status(500).json({ error: 'Failed to extract audio from YouTube. Make sure the video is public and has clear speech.' });
   }
 });
 
