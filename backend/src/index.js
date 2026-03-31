@@ -11,6 +11,9 @@ dotenv.config();
 
 const app = express();
 
+const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
+const hasElevenLabsKey = Boolean(process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_API_KEY.trim());
+
 app.use(cors({
   origin: [
     'http://localhost:5173',
@@ -20,12 +23,26 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '25mb' }));
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
+const genAI = hasGeminiKey ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+const elevenlabs = hasElevenLabsKey ? new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY }) : null;
+
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    config: {
+      geminiConfigured: hasGeminiKey,
+      elevenLabsConfigured: hasElevenLabsKey,
+      brainServiceConfigured: Boolean(process.env.BRAIN_SERVICE_URL),
+    },
+  });
+});
 
 // --- ROUTE: Text to Speech ---
 app.post('/api/ask-question', async (req, res) => {
   const { question, voiceId } = req.body;
+  if (!elevenlabs) {
+    return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
+  }
   try {
     const audio = await elevenlabs.textToSpeech.convert(voiceId || 'JBFqnCBsd6RMkjVDRZzb', {
       text: question,
@@ -45,6 +62,9 @@ app.post('/api/ask-question', async (req, res) => {
 // --- ROUTE: Parse Resume ---
 app.post('/api/parse-resume', async (req, res) => {
   const { fileBase64, mimeType } = req.body;
+  if (!genAI) {
+    return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
+  }
   if (!fileBase64) return res.status(400).json({ error: 'No file provided' });
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
@@ -70,6 +90,12 @@ app.post('/api/parse-resume', async (req, res) => {
 // --- ROUTE: Generate Questions ---
 app.post('/api/generate-questions', async (req, res) => {
   const { jobDescription, resumeSummary } = req.body;
+  if (!genAI) {
+    return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
+  }
+  if (!jobDescription || String(jobDescription).trim().length < 20) {
+    return res.status(400).json({ error: 'jobDescription must be at least 20 characters' });
+  }
   const resumeContext = resumeSummary
     ? `\nCandidate resume summary: skills: ${resumeSummary.skills?.join(', ') || 'unknown'}. Experience: ${resumeSummary.experience || 'unknown'}. Education: ${resumeSummary.education || 'unknown'}. Highlights: ${resumeSummary.highlights?.join('; ') || 'none'}.`
     : '';
@@ -98,13 +124,17 @@ Keep language professional, concise, and supportive. Return ONLY JSON: [{"questi
     res.json({ questions });
   } catch (error) {
     console.error('Question Gen Error:', error);
-    res.status(500).json({ error: 'Failed to generate questions' });
+    const message = error instanceof Error ? error.message : 'Unknown Gemini error';
+    res.status(500).json({ error: `Failed to generate questions: ${message}` });
   }
 });
 
 // --- ROUTE: Get Feedback ---
 app.post('/api/get-feedback', async (req, res) => {
   const { sessionData, resumeSummary } = req.body;
+  if (!genAI) {
+    return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
+  }
   const resumeContext = resumeSummary
     ? ` The candidate's resume shows: ${resumeSummary.experience || ''}. Skills: ${resumeSummary.skills?.join(', ') || ''}.`
     : '';
@@ -177,6 +207,9 @@ app.post('/api/neural-engagement', async (req, res) => {
 // --- ROUTE: Clone Voice (Instant Voice Cloning) ---
 app.post('/api/clone-voice', async (req, res) => {
   const { audioBase64, mimeType, interviewerName } = req.body;
+  if (!elevenlabs) {
+    return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
+  }
   try {
     const buffer = Buffer.from(audioBase64, 'base64');
     const blob = new Blob([buffer], { type: mimeType || 'audio/mpeg' });
@@ -195,6 +228,9 @@ app.post('/api/clone-voice', async (req, res) => {
 // --- ROUTE: Clone Voice from YouTube URL ---
 app.post('/api/clone-voice-youtube', async (req, res) => {
   const { youtubeUrl, interviewerName } = req.body;
+  if (!elevenlabs) {
+    return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
+  }
 
   // Validate YouTube URL
   if (!youtubeUrl || !/^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be\/)/.test(youtubeUrl)) {

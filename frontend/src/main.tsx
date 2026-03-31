@@ -7,14 +7,8 @@ import { router } from './Routes/Routes.tsx'
 import { ConvexProvider, ConvexReactClient } from 'convex/react'
 
 // Ensure every browser has a persistent anonymous session ID
-const existingSession =
-  localStorage.getItem('mockcortex_session_id') ??
-  localStorage.getItem('mockrot_session_id')
-
-if (!existingSession) {
+if (!localStorage.getItem('mockcortex_session_id')) {
   localStorage.setItem('mockcortex_session_id', crypto.randomUUID())
-} else {
-  localStorage.setItem('mockcortex_session_id', existingSession)
 }
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string | undefined

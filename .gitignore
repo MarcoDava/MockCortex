@@ -2,3 +2,5 @@ __pycache__/
 node_modules/
 backend/node_modules/
 frontend/node_modules/
+.claude-flow/
+.mcp.json

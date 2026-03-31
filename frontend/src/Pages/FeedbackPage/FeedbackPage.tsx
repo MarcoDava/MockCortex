@@ -17,18 +17,41 @@ const neuralBadgeClass = (score: number) => {
   return "bg-red-600 text-white";
 };
 
-type NeuralState = "idle" | "loading" | "done" | "unavailable";
+type NeuralState = "loading" | "done" | "pending";
 
 const FeedbackPage = () => {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [sessionResults, setSessionResults] = useState<SessionResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [neuralState, setNeuralState] = useState<NeuralState>("idle");
+  const [neuralState, setNeuralState] = useState<NeuralState>("loading");
   const [neuralResults, setNeuralResults] = useState<NeuralResult[] | null>(null);
   const [neuralInterpretation, setNeuralInterpretation] = useState<string>("");
 
   const addInterview = useMutation(convexAddInterview);
   const touchSession = useMutation(convexTouchSession);
+
+  const runNeuralAnalysisFor = async (sessions: SessionResult[]) => {
+    const transcripts = sessions.map((s) => s.answer).filter(Boolean);
+    if (transcripts.length === 0) { setNeuralState("pending"); return; }
+    try {
+      const res = await fetch(`${API_BASE}/api/neural-engagement`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcripts }),
+      });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as NeuralEngagementResponse;
+      if (!data.available || !data.results) {
+        setNeuralState("pending");
+        return;
+      }
+      setNeuralResults(data.results);
+      setNeuralInterpretation(data.interpretation ?? "");
+      setNeuralState("done");
+    } catch {
+      setNeuralState("pending");
+    }
+  };
 
   useEffect(() => {
     const loadFeedback = async () => {
@@ -66,10 +89,7 @@ const FeedbackPage = () => {
             : 0;
 
         const entry = {
-          sessionId:
-            localStorage.getItem("mockcortex_session_id") ??
-            localStorage.getItem("mockrot_session_id") ??
-            "",
+          sessionId: localStorage.getItem("mockcortex_session_id") ?? "",
           date: new Date().toLocaleString(),
           jobTitle: "Interview Session",
           avgScore,
@@ -94,8 +114,12 @@ const FeedbackPage = () => {
             JSON.stringify([entry, ...history])
           );
         }
+
+        // Auto-trigger neural analysis after feedback is saved
+        void runNeuralAnalysisFor(sessionData);
       } catch {
         setFeedbacks([]);
+        setNeuralState("pending");
       } finally {
         setIsLoading(false);
       }
@@ -115,30 +139,6 @@ const FeedbackPage = () => {
       const audio = new Audio(URL.createObjectURL(await res.blob()));
       audio.play();
     } catch { /* non-fatal */ }
-  };
-
-  const runNeuralAnalysis = async () => {
-    setNeuralState("loading");
-    const transcripts = sessionResults.map((s) => s.answer).filter(Boolean);
-    if (transcripts.length === 0) { setNeuralState("unavailable"); return; }
-    try {
-      const res = await fetch(`${API_BASE}/api/neural-engagement`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcripts }),
-      });
-      if (!res.ok) throw new Error();
-      const data = (await res.json()) as NeuralEngagementResponse;
-      if (!data.available || !data.results) {
-        setNeuralState(data.pending ? "idle" : "unavailable");
-        return;
-      }
-      setNeuralResults(data.results);
-      setNeuralInterpretation(data.interpretation ?? "");
-      setNeuralState("done");
-    } catch {
-      setNeuralState("unavailable");
-    }
   };
 
   if (isLoading) {
@@ -211,40 +211,29 @@ const FeedbackPage = () => {
                 </p>
               </div>
             </div>
-            {neuralState === "idle" && (
-              <button
-                onClick={runNeuralAnalysis}
-                className="w-full bg-purple-700 hover:bg-purple-600 text-white font-semibold py-2.5 rounded-xl transition-colors"
-              >
-                Run Neural Analysis
-              </button>
-            )}
             {neuralState === "loading" && (
               <div className="flex items-center gap-3 text-purple-300">
                 <span className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Running TRIBE v2 brain analysis — ~20–60 s per answer…</span>
+                <span className="text-sm">Running brain analysis…</span>
               </div>
             )}
-            {neuralState === "unavailable" && (
-              <p className="text-sm text-gray-500">
-                Brain service unavailable. Start the Colab runner and set{" "}
-                <code className="text-purple-400">BRAIN_SERVICE_URL</code> in your backend.
+            {neuralState === "pending" && (
+              <p className="text-sm text-purple-300/70">
+                Brain analysis pending — TRIBE v2 not connected.{" "}
+                <span className="text-gray-500">
+                  Set <code className="text-purple-400">BRAIN_SERVICE_URL</code> in your backend to activate neural scoring.
+                </span>
               </p>
             )}
             {neuralState === "done" && (
               <div className="space-y-2">
-                <p className="text-sm text-green-400">✓ Neural analysis complete - brain maps shown above.</p>
+                <p className="text-sm text-green-400">✓ Neural analysis complete — brain maps shown above.</p>
                 {neuralInterpretation && (
                   <p className="text-sm text-purple-100 bg-purple-900/30 border border-purple-800/50 rounded-lg px-3 py-2">
                     {neuralInterpretation}
                   </p>
                 )}
               </div>
-            )}
-            {neuralState === "idle" && (
-              <p className="text-xs text-gray-500">
-                If TRIBE v2 is not connected yet, this section stays pending until backend connection is available.
-              </p>
             )}
           </div>
         )}

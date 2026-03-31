@@ -13,10 +13,7 @@ const scoreBadgeClass = (score: number) => {
 const PastInterviewsPage = () => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
-  const sessionId =
-    localStorage.getItem("mockcortex_session_id") ??
-    localStorage.getItem("mockrot_session_id") ??
-    "";
+  const sessionId = localStorage.getItem("mockcortex_session_id") ?? "";
   const touchSession = useMutation(convexTouchSession);
 
   // Convex real-time query — returns undefined while loading, null if not connected

@@ -109,7 +109,16 @@ const JobDescriptionPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobDescription: text, voiceId, resumeSummary }),
       });
-      if (!response.ok) throw new Error("Server error");
+      if (!response.ok) {
+        let message = "Server error";
+        try {
+          const errData = (await response.json()) as { error?: string };
+          if (errData?.error) message = errData.error;
+        } catch {
+          // ignore JSON parse errors and keep fallback message
+        }
+        throw new Error(message);
+      }
       const data = (await response.json()) as { questions?: unknown[] };
       if (data.questions) {
         localStorage.setItem("interviewQuestions", JSON.stringify(data.questions));
@@ -117,8 +126,9 @@ const JobDescriptionPage = () => {
       } else {
         throw new Error("No questions returned");
       }
-    } catch {
-      setError("Failed to generate questions. Check your connection and try again.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to generate questions. Check your connection and try again.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
