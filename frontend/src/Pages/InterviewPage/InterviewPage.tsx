@@ -178,20 +178,26 @@ const InterviewPage = () => {
   const startAudioRecorder = useCallback(() => {
     const stream = streamRef.current;
     if (!stream) return;
-    const hasAudio = stream.getAudioTracks().length > 0;
-    if (!hasAudio) return;
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) return;
 
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-      ? "audio/webm"
-      : "audio/mp4";
+    // Use an audio-only stream — passing a mixed video+audio stream can throw NotSupportedError
+    const audioStream = new MediaStream(audioTracks);
 
-    recordedChunksRef.current = [];
-    const recorder = new MediaRecorder(stream, { mimeType });
-    recorder.ondataavailable = (event: BlobEvent) => {
-      if (event.data.size > 0) recordedChunksRef.current.push(event.data);
-    };
-    recorder.start();
-    mediaRecorderRef.current = recorder;
+    const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
+    const mimeType = candidates.find((t) => MediaRecorder.isTypeSupported(t));
+
+    try {
+      recordedChunksRef.current = [];
+      const recorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+    } catch {
+      // Recording not supported in this browser — interview continues without audio capture
+    }
   }, []);
 
   const stopAudioRecorder = useCallback(async (): Promise<Blob | null> => {
