@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation } from "convex/react";
 import { API_BASE } from "@/lib/api";
-import { convexAddInterview } from "@/lib/convexFunctions";
-import type { Feedback, SessionResult, NeuralResult } from "@/types";
+import { convexAddInterview, convexTouchSession } from "@/lib/convexFunctions";
+import type { Feedback, NeuralEngagementResponse, NeuralResult, SessionResult } from "@/types";
 
 const scoreBadgeClass = (score: number) => {
   if (score >= 7) return "bg-green-600 text-white";
@@ -25,8 +25,10 @@ const FeedbackPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [neuralState, setNeuralState] = useState<NeuralState>("idle");
   const [neuralResults, setNeuralResults] = useState<NeuralResult[] | null>(null);
+  const [neuralInterpretation, setNeuralInterpretation] = useState<string>("");
 
   const addInterview = useMutation(convexAddInterview);
+  const touchSession = useMutation(convexTouchSession);
 
   useEffect(() => {
     const loadFeedback = async () => {
@@ -64,18 +66,24 @@ const FeedbackPage = () => {
             : 0;
 
         const entry = {
-          sessionId: localStorage.getItem("mockrot_session_id") ?? "",
+          sessionId:
+            localStorage.getItem("mockcortex_session_id") ??
+            localStorage.getItem("mockrot_session_id") ??
+            "",
           date: new Date().toLocaleString(),
           jobTitle: "Interview Session",
           avgScore,
+          lastAccessedAt: Date.now(),
           feedback: fb,
+          answers: sessionData,
           questions: sessionData.map((s) => s.question),
-          characterName: character?.name,
+          interviewerName: character?.name,
         };
 
         // Persist to Convex (primary) with localStorage fallback
         try {
           await addInterview(entry);
+          await touchSession({ sessionId: entry.sessionId });
         } catch {
           // Convex not configured — fall back to localStorage
           const history: unknown[] = JSON.parse(
@@ -120,9 +128,13 @@ const FeedbackPage = () => {
         body: JSON.stringify({ transcripts }),
       });
       if (!res.ok) throw new Error();
-      const data = (await res.json()) as { available: boolean; results: NeuralResult[] | null };
-      if (!data.available || !data.results) { setNeuralState("unavailable"); return; }
+      const data = (await res.json()) as NeuralEngagementResponse;
+      if (!data.available || !data.results) {
+        setNeuralState(data.pending ? "idle" : "unavailable");
+        return;
+      }
       setNeuralResults(data.results);
+      setNeuralInterpretation(data.interpretation ?? "");
       setNeuralState("done");
     } catch {
       setNeuralState("unavailable");
@@ -220,7 +232,19 @@ const FeedbackPage = () => {
               </p>
             )}
             {neuralState === "done" && (
-              <p className="text-sm text-green-400">✓ Neural analysis complete — brain maps shown above.</p>
+              <div className="space-y-2">
+                <p className="text-sm text-green-400">✓ Neural analysis complete - brain maps shown above.</p>
+                {neuralInterpretation && (
+                  <p className="text-sm text-purple-100 bg-purple-900/30 border border-purple-800/50 rounded-lg px-3 py-2">
+                    {neuralInterpretation}
+                  </p>
+                )}
+              </div>
+            )}
+            {neuralState === "idle" && (
+              <p className="text-xs text-gray-500">
+                If TRIBE v2 is not connected yet, this section stays pending until backend connection is available.
+              </p>
             )}
           </div>
         )}

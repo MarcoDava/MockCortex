@@ -1,4 +1,4 @@
-# CLAUDE.md — MockRot AI Interview Platform
+# CLAUDE.md — MockCortex AI Interview Platform
 
 This file provides guidance for AI assistants (Claude, Copilot, etc.) working in this codebase.
 
@@ -6,7 +6,7 @@ This file provides guidance for AI assistants (Claude, Copilot, etc.) working in
 
 ## Project Overview
 
-**MockRot** is an AI-powered mock interview platform that uses famous internet characters (meme personas) as interviewers. The goal is to reduce interview anxiety by making practice sessions more engaging. Users select a character interviewer, paste a job description, and conduct a voice interview. AI then generates personalized feedback.
+**MockCortex** is an AI-powered mock interview platform with professional voice interviewers and optional custom voice cloning. The goal is to reduce interview anxiety while keeping practice realistic and structured. Users select an interviewer voice, paste a job description, and conduct a voice interview. AI then generates personalized feedback.
 
 **Built for:** Macathon 2026 hackathon. Supports up to 25 concurrent users.
 
@@ -15,7 +15,7 @@ This file provides guidance for AI assistants (Claude, Copilot, etc.) working in
 ## Architecture
 
 ```
-MockRot/
+MockCortex/
 ├── backend/              # Node.js + Express API server
 │   ├── src/index.js      # Single-file server (all API routes)
 │   └── .env.example      # Required environment variables
@@ -66,7 +66,7 @@ MockRot/
 ## User Flow
 
 1. `/` — Home page, navigate to start
-2. `/characters` — Select an interviewer persona; optionally upload MP3 to clone voice via ElevenLabs IVC
+2. `/characters` — Select Adam or Rachel as interviewer voice; optionally upload MP3/YouTube sample to clone voice via ElevenLabs IVC
 3. `/jobdescription` — Paste job description; backend generates 3 interview questions
 4. `/interview` — 3-second countdown → 2-minute voice recording per question (Web Speech API transcribes); webcam feed active; emotion analysis every 15 s; 10 s silence detection
 5. `/feedback` — AI scores each answer (0–10), saved to Convex; optional TRIBE v2 neural brain analysis
@@ -172,8 +172,7 @@ All routes are in `backend/src/index.js`. The backend runs on port 3000 in devel
 | `/api/generate-questions` | POST | `{ jobDescription, voiceId, resumeSummary? }` | `{ questions: [{question, type}] }` (5 questions) |
 | `/api/ask-question` | POST | `{ question, voiceId }` | MP3 audio stream |
 | `/api/get-feedback` | POST | `{ sessionData, voiceId, resumeSummary? }` | `{ feedback: [{score, critique}] }` |
-| `/api/analyze-emotion` | POST | `{ imageBase64, voiceId }` | `{ emotion, shouldInterrupt, message }` |
-| `/api/clone-voice` | POST | `{ audioBase64, mimeType, characterName }` | `{ voiceId }` |
+| `/api/clone-voice` | POST | `{ audioBase64, mimeType, interviewerName }` | `{ voiceId }` |
 | `/api/neural-engagement` | POST | `{ transcripts: string[] }` | `{ available, results }` |
 | `/api/parse-resume` | POST | `{ fileBase64, mimeType }` | `{ name, skills, experience, education, highlights }` |
 
@@ -189,12 +188,12 @@ interviews table:
   avgScore      number
   feedback      [{score, critique}]
   questions?    string[]
-  characterName? string
+  interviewerName? string
 
 index: by_session on sessionId
 ```
 
-**Anonymous session:** Each browser generates a UUID on first visit stored as `mockrot_session_id` in localStorage. No login required.
+**Anonymous session:** Each browser generates a UUID on first visit stored as `mockcortex_session_id` in localStorage. No login required.
 
 ---
 
@@ -202,7 +201,7 @@ index: by_session on sessionId
 
 | Key | Content |
 |-----|---------|
-| `mockrot_session_id` | Anonymous UUID (permanent, never expires) |
+| `mockcortex_session_id` | Anonymous UUID (permanent, never expires) |
 | `selectedVoiceId` | ElevenLabs voice ID (default or cloned) |
 | `selectedCharacter` | Full character object `{id, name, img, description, key}` |
 | `clonedVoice_{key}` | Cloned ElevenLabs voice ID per character |

@@ -4,7 +4,7 @@ import logo from "../assets/logo.png";
 
 const links = [
   { to: "/", label: "Home" },
-  { to: "/characters", label: "Characters" },
+  { to: "/characters", label: "Interviewers" },
   { to: "/pastinterviews", label: "History" },
 ];
 
@@ -22,7 +22,7 @@ const Navbar = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2.5 cursor-pointer">
           <img src={logo} alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-          <span className="font-bold text-white text-base tracking-tight">MockRot</span>
+          <span className="font-bold text-white text-base tracking-tight">MockCortex</span>
         </Link>
 
         {/* Nav links */}

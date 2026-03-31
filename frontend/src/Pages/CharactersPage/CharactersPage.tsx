@@ -3,41 +3,32 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { API_BASE } from "@/lib/api";
 
-export const CHARACTERS = [
+export const INTERVIEWERS = [
   {
-    id: "JBFqnCBsd6RMkjVDRZzb",
-    name: "Skibidi Toilet",
-    key: "skibidi",
-    img: "https://images-ext-1.discordapp.net/external/Hap2lryvnginFongsyxwLoApIFGpEy9DQhWLM49y65Q/%3Fw%3D1600%26h%3D1600%26fit%3Dcrop/https/static0.thegamerimages.com/wordpress/wp-content/uploads/2025/11/a-screenshot-from-skibidi-toilet-showing-giant-toilets-with-a-mans-head-poking-out-3.jpg?format=webp&width=1221&height=1221",
-    description: "High energy brainrot. Very rizz-focused.",
-    tag: "Chaotic",
-    tagColor: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+    id: "pNInz6obpgDQGcFmaJgB",
+    name: "Adam",
+    key: "adam",
+    img: "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800",
+    description: "Confident male interviewer with a clear and steady delivery.",
+    tag: "Male Voice",
+    tagColor: "text-cyan-300 bg-cyan-500/10 border-cyan-500/20",
   },
   {
-    id: "ErXwobaYiN019PkySvjV",
-    name: "Trump",
-    key: "trump",
-    img: "https://images-ext-1.discordapp.net/external/O-fnPVcZNp2xui2WCKT9F4eVBV8Lm20lb3IwNsgfLdY/%3Fcrop%3D0.646xw%3A0.969xh%3B0.148xw%2C0%26resize%3D640%3A%2A/https/hips.hearstapps.com/hmg-prod/images/gettyimages-2194420718-67d9b4e326598.jpg?format=webp&width=960&height=960",
-    description: "The best interviewer. Huge questions. Tremendous.",
-    tag: "Dominant",
-    tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  },
-  {
-    id: "EXAVITQu4vr4xnSDxMaL",
-    name: "Tung Tung Tung Sahur",
-    key: "sahur",
-    img: "https://play-lh.googleusercontent.com/blFJnPG3FC5gqUmZOMPT9cAY6T2dfteTNK5KlKnEoQKgXk1xJF9_pKqPy_vVKyjo_h9l=w240-h480-rw",
-    description: "Wake up! Energy-filled Indonesian brainrot.",
-    tag: "Hype",
-    tagColor: "text-green-400 bg-green-500/10 border-green-500/20",
+    id: "21m00Tcm4TlvDq8ikWAM",
+    name: "Rachel",
+    key: "rachel",
+    img: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=800",
+    description: "Warm female interviewer voice tuned for clarity and calm pacing.",
+    tag: "Female Voice",
+    tagColor: "text-amber-300 bg-amber-500/10 border-amber-500/20",
   },
 ];
 
-type Character = typeof CHARACTERS[0];
+type Interviewer = typeof INTERVIEWERS[0];
 
 const loadClonedVoices = (): Record<string, string> => {
   const result: Record<string, string> = {};
-  for (const char of CHARACTERS) {
+  for (const char of INTERVIEWERS) {
     const stored = localStorage.getItem(`clonedVoice_${char.key}`);
     if (stored) result[char.key] = stored;
   }
@@ -52,21 +43,22 @@ const CharactersPage = () => {
   const [clonedVoices, setClonedVoices] = useState<Record<string, string>>(loadClonedVoices);
   const [ytUrls, setYtUrls] = useState<Record<string, string>>({});
 
-  const effectiveVoiceId = (char: Character) => clonedVoices[char.key] ?? char.id;
+  const effectiveVoiceId = (char: Interviewer) => clonedVoices[char.key] ?? char.id;
 
-  const selectCharacter = (char: Character) => {
+  const selectCharacter = (char: Interviewer) => {
     localStorage.setItem("selectedVoiceId", effectiveVoiceId(char));
     localStorage.setItem("selectedCharacter", JSON.stringify({ ...char, id: effectiveVoiceId(char) }));
+    localStorage.setItem("selectedInterviewerKey", char.key);
     navigate("/jobdescription");
   };
 
-  const previewVoice = async (char: Character) => {
+  const previewVoice = async (char: Interviewer) => {
     try {
       const res = await fetch(`${API_BASE}/api/ask-question`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question: `Hello! I am ${char.name}. Are you ready for the best interview of your life?`,
+          question: `Hi, I am ${char.name}. I will guide your mock interview today.`,
           voiceId: effectiveVoiceId(char),
         }),
       });
@@ -77,7 +69,7 @@ const CharactersPage = () => {
     }
   };
 
-  const handleYouTubeClone = async (char: Character) => {
+  const handleYouTubeClone = async (char: Interviewer) => {
     const url = ytUrls[char.key]?.trim();
     if (!url) return;
     setCloneError(null);
@@ -86,7 +78,7 @@ const CharactersPage = () => {
       const res = await fetch(`${API_BASE}/api/clone-voice-youtube`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ youtubeUrl: url, characterName: char.name }),
+        body: JSON.stringify({ youtubeUrl: url, interviewerName: char.name }),
       });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
@@ -103,7 +95,7 @@ const CharactersPage = () => {
     }
   };
 
-  const handleFileChange = (char: Character, file: File) => {
+  const handleFileChange = (char: Interviewer, file: File) => {
     setCloneError(null);
     setCloningKey(char.key);
     const reader = new FileReader();
@@ -117,7 +109,7 @@ const CharactersPage = () => {
           body: JSON.stringify({
             audioBase64,
             mimeType: file.type || "audio/mpeg",
-            characterName: char.name,
+            interviewerName: char.name,
           }),
         });
         if (!res.ok) throw new Error("Clone failed");
@@ -144,13 +136,13 @@ const CharactersPage = () => {
         {/* Header */}
         <div className="text-center mb-12 space-y-3">
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
-            Pick your{" "}
+            Choose your{" "}
             <span className="bg-gradient-to-r from-violet-400 to-rose-400 bg-clip-text text-transparent">
-              interviewer
+              interviewer voice
             </span>
           </h1>
           <p className="text-gray-400 text-base max-w-md mx-auto">
-            Each character has their own vibe. Upload an MP3 to clone their voice.
+            Start with Adam or Rachel. You can upload custom samples or use a YouTube clip for voice cloning.
           </p>
         </div>
 
@@ -162,7 +154,7 @@ const CharactersPage = () => {
 
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {CHARACTERS.map((char, i) => {
+          {INTERVIEWERS.map((char, i) => {
             const isCloning = cloningKey === char.key;
             const hasClone = Boolean(clonedVoices[char.key]);
 
@@ -183,7 +175,7 @@ const CharactersPage = () => {
                 {/* Avatar */}
                 <div className="relative mb-5">
                   <div className="w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 group-hover:ring-violet-500/50 transition-all duration-300">
-                    <img src={char.img} alt={char.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <img src={char.img} alt={char.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
                   </div>
                 </div>
 
@@ -259,7 +251,7 @@ const CharactersPage = () => {
                 {/* Select arrow hint */}
                 <div className="mt-4 w-full pt-4 border-t border-white/8">
                   <p className="text-center text-xs text-gray-600 group-hover:text-violet-400 transition-colors font-medium">
-                    Click to select →
+                    Select and continue
                   </p>
                 </div>
               </motion.div>

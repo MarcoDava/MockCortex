@@ -1,10 +1,10 @@
 # MacathonProject
-Feeling nervous in interviews? Calm your nerves with MockRot, an AI interviewer modeled after famous characters. Get real practice while improving your technical interview skills
+Feeling nervous in interviews? Calm your nerves with MockCortex, an AI interview coach with professional voice guidance. Get real practice while improving your technical interview skills.
 
 ## About
-As interviews involve high stakes and are commonly intimidating, MockRot aims to calm interviewees by using famous internet icons as interviewers. To improve education, MockRot aims to fill the gap between schooling and getting a job, as new graduates have limited interviewing skills while those are required from them
+As interviews involve high stakes and are commonly intimidating, MockCortex helps interviewees practice with structured prompts, voice guidance, and actionable feedback. To improve education outcomes, MockCortex aims to fill the gap between schooling and getting a job, where new graduates often have limited interviewing experience.
 
-MockRot operates as an app which uses Gemini and ElevenLabs to create interview questions and interpret audio replies
+MockCortex operates as an app that uses Gemini and ElevenLabs to create interview questions and interpret audio replies.
 
 ### Libraries
 The following are installed in the backend server

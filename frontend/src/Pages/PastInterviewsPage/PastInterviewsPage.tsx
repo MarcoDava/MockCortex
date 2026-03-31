@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useQuery } from "convex/react";
-import { convexGetBySession } from "@/lib/convexFunctions";
+import { useMutation, useQuery } from "convex/react";
+import { convexGetBySession, convexTouchSession } from "@/lib/convexFunctions";
 import type { InterviewSession } from "@/types";
 
 const scoreBadgeClass = (score: number) => {
@@ -13,7 +13,11 @@ const scoreBadgeClass = (score: number) => {
 const PastInterviewsPage = () => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
-  const sessionId = localStorage.getItem("mockrot_session_id") ?? "";
+  const sessionId =
+    localStorage.getItem("mockcortex_session_id") ??
+    localStorage.getItem("mockrot_session_id") ??
+    "";
+  const touchSession = useMutation(convexTouchSession);
 
   // Convex real-time query — returns undefined while loading, null if not connected
   const convexHistory = useQuery(convexGetBySession, { sessionId });
@@ -24,6 +28,11 @@ const PastInterviewsPage = () => {
     const saved = localStorage.getItem("interviewHistory");
     if (saved) setLocalHistory(JSON.parse(saved) as InterviewSession[]);
   }, []);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    void touchSession({ sessionId });
+  }, [sessionId, touchSession]);
 
   // Use Convex data when available, otherwise fall back to localStorage
   const history: InterviewSession[] =

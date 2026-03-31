@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { API_BASE } from "@/lib/api";
 import type { Character, ResumeSummary } from "@/types";
+import { INTERVIEWERS } from "@/Pages/CharactersPage/CharactersPage";
 
 const JobDescriptionPage = () => {
   const [text, setText] = useState("");
@@ -19,12 +20,32 @@ const JobDescriptionPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  const [voiceKey, setVoiceKey] = useState<string>(() => {
+    return localStorage.getItem("selectedInterviewerKey") ?? "adam";
+  });
+
   const character = (() => {
     try {
       const raw = localStorage.getItem("selectedCharacter");
       return raw ? (JSON.parse(raw) as Character) : null;
     } catch { return null; }
   })();
+
+  const getVoiceId = (key: string) => {
+    const preset = INTERVIEWERS.find((i) => i.key === key);
+    if (!preset) return "";
+    return localStorage.getItem(`clonedVoice_${key}`) ?? preset.id;
+  };
+
+  const switchVoice = (key: string) => {
+    const preset = INTERVIEWERS.find((i) => i.key === key);
+    if (!preset) return;
+    const effectiveId = getVoiceId(key);
+    setVoiceKey(key);
+    localStorage.setItem("selectedInterviewerKey", key);
+    localStorage.setItem("selectedVoiceId", effectiveId);
+    localStorage.setItem("selectedCharacter", JSON.stringify({ ...preset, id: effectiveId }));
+  };
 
   const isValid = text.trim().length >= 20;
 
@@ -76,7 +97,7 @@ const JobDescriptionPage = () => {
   const startInterview = async () => {
     const voiceId = localStorage.getItem("selectedVoiceId");
     if (!voiceId) {
-      setError("Please go back and select a character first.");
+      setError("Please go back and select an interviewer first.");
       return;
     }
     setIsLoading(true);
@@ -113,7 +134,32 @@ const JobDescriptionPage = () => {
           </p>
         </div>
 
-        {/* Character confirmation */}
+        <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-4 space-y-3">
+          <p className="text-gray-300 text-sm font-medium">Interviewer voice</p>
+          <div className="grid grid-cols-2 gap-3">
+            {INTERVIEWERS.map((voice) => {
+              const selected = voiceKey === voice.key;
+              const hasClone = Boolean(localStorage.getItem(`clonedVoice_${voice.key}`));
+              return (
+                <button
+                  key={voice.key}
+                  type="button"
+                  onClick={() => switchVoice(voice.key)}
+                  className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                    selected
+                      ? "border-blue-500 bg-blue-500/10"
+                      : "border-gray-700 bg-gray-900/40 hover:border-gray-500"
+                  }`}
+                >
+                  <p className="text-white text-sm font-semibold">{voice.name}</p>
+                  <p className="text-gray-400 text-xs mt-1">{hasClone ? "Custom clone active" : "Default ElevenLabs voice"}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Interviewer confirmation */}
         {character ? (
           <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3">
             <img
@@ -123,14 +169,14 @@ const JobDescriptionPage = () => {
             />
             <div>
               <p className="text-white text-sm font-semibold">{character.name}</p>
-              <p className="text-gray-400 text-xs">Your interviewer</p>
+              <p className="text-gray-400 text-xs">Current interviewer voice</p>
             </div>
           </div>
         ) : (
           <div className="bg-yellow-900/30 border border-yellow-700 rounded-xl px-4 py-3 text-yellow-400 text-sm">
-            No character selected — go back to{" "}
+            No interviewer selected - go back to{" "}
             <a href="/characters" className="underline">
-              Characters
+              Interviewers
             </a>{" "}
             first.
           </div>

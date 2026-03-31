@@ -11,6 +11,9 @@ export interface Feedback {
 export interface SessionResult {
   question: string;
   answer: string;
+  audioUrl?: string;
+  audioStorageId?: string;
+  emotionTimeline?: EmotionSample[];
 }
 
 export interface InterviewSession {
@@ -18,6 +21,7 @@ export interface InterviewSession {
   jobTitle: string;
   avgScore: number;
   feedback: Feedback[];
+  answers?: SessionResult[];
 }
 
 export interface Character {
@@ -25,6 +29,12 @@ export interface Character {
   name: string;
   description: string;
   img: string;
+}
+
+export interface EmotionSample {
+  ts: number;
+  emotion: string;
+  confidence: number;
 }
 
 export interface EmotionResult {
@@ -50,4 +60,11 @@ export interface NeuralResult {
   score: number;
   brainImageBase64: string;
   regions: BrainRegion[];
+}
+
+export interface NeuralEngagementResponse {
+  available: boolean;
+  pending: boolean;
+  results: NeuralResult[] | null;
+  interpretation?: string;
 }

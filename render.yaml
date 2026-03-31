@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: mockrot-backend
+    name: mockcortex-backend
     env: node
     rootDir: backend
     buildCommand: apt-get install -y ffmpeg && npm install

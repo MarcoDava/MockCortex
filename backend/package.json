@@ -13,7 +13,7 @@
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
     "uuid": "^13.0.0",
-    "yt-dlp-exec": "^3.0.12"
+    "yt-dlp-exec": "^1.0.2"
   },
   "devDependencies": {
     "@types/dotenv": "^6.1.1",

@@ -23,12 +23,6 @@ app.use(express.json({ limit: '25mb' }));
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const elevenlabs = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
 
-const PERSONAS = {
-  'JBFqnCBsd6RMkjVDRZzb': "Skibidi Toilet (Brainrot king, uses gyatt/rizz/sigma, chaotic genius coach)",
-  'ErXwobaYiN019PkySvjV': "Donald Trump (Confident, uses 'huge'/'tremendous', focuses on winning)",
-  'EXAVITQu4vr4xnSDxMaL': "Tung Tung Sahur (High energy, drumming sounds like 'Tung Tung', sincere but loud)",
-};
-
 // --- ROUTE: Text to Speech ---
 app.post('/api/ask-question', async (req, res) => {
   const { question, voiceId } = req.body;
@@ -75,14 +69,13 @@ app.post('/api/parse-resume', async (req, res) => {
 
 // --- ROUTE: Generate Questions ---
 app.post('/api/generate-questions', async (req, res) => {
-  const { jobDescription, voiceId, resumeSummary } = req.body;
-  const persona = PERSONAS[voiceId] || 'a professional interviewer';
+  const { jobDescription, resumeSummary } = req.body;
   const resumeContext = resumeSummary
     ? `\nCandidate resume summary: skills: ${resumeSummary.skills?.join(', ') || 'unknown'}. Experience: ${resumeSummary.experience || 'unknown'}. Education: ${resumeSummary.education || 'unknown'}. Highlights: ${resumeSummary.highlights?.join('; ') || 'none'}.`
     : '';
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `You are ${persona} conducting a realistic job interview.${resumeContext}
+    const prompt = `You are a calm, professional interview coach conducting a realistic job interview.${resumeContext}
 
 Job description: ${jobDescription}
 
@@ -93,7 +86,7 @@ Generate exactly 5 interview questions following this realistic interview struct
 4. Technical: A technical or skills-based question for the role (type: "technical")
 5. Situational: A "what would you do if..." scenario question (type: "situational")
 
-Stay in character throughout. Return ONLY JSON: [{"question":"text","type":"intro|resume|behavioral|technical|situational"}]`;
+Keep language professional, concise, and supportive. Return ONLY JSON: [{"question":"text","type":"intro|resume|behavioral|technical|situational"}]`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
     let questions;
@@ -109,47 +102,15 @@ Stay in character throughout. Return ONLY JSON: [{"question":"text","type":"intr
   }
 });
 
-// --- ROUTE: Analyze Emotion from Webcam Frame ---
-app.post('/api/analyze-emotion', async (req, res) => {
-  const { imageBase64, voiceId } = req.body;
-  const persona = PERSONAS[voiceId] || 'a professional interviewer';
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-    const prompt = `You are ${persona} watching a job interview candidate via webcam. Analyze their facial expression. Return ONLY JSON: {"emotion":"one word","shouldInterrupt":true|false,"message":"if shouldInterrupt, a brief in-character comment under 20 words, else empty string"}. Set shouldInterrupt to true only if they look clearly distressed, panicked, confused, or blank. Be lenient.`;
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          mimeType: 'image/jpeg',
-          data: imageBase64,
-        },
-      },
-    ]);
-    const text = result.response.text().replace(/```json|```/g, '').trim();
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      return res.json({ emotion: 'neutral', shouldInterrupt: false, message: '' });
-    }
-    res.json(parsed);
-  } catch (error) {
-    console.error('Emotion Analysis Error:', error);
-    // Non-fatal: return neutral so interview continues
-    res.json({ emotion: 'neutral', shouldInterrupt: false, message: '' });
-  }
-});
-
 // --- ROUTE: Get Feedback ---
 app.post('/api/get-feedback', async (req, res) => {
-  const { sessionData, voiceId, resumeSummary } = req.body;
-  const persona = PERSONAS[voiceId] || 'a professional interviewer';
+  const { sessionData, resumeSummary } = req.body;
   const resumeContext = resumeSummary
     ? ` The candidate's resume shows: ${resumeSummary.experience || ''}. Skills: ${resumeSummary.skills?.join(', ') || ''}.`
     : '';
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `You are ${persona}.${resumeContext} Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be encouraging and generous — a decent answer with correct intent scores at least 6. Reserve scores below 4 only for completely wrong or empty answers. If a resume was provided, note whether the answer aligns with their stated experience. Speak in character. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
+    const prompt = `You are a calm, professional interview coach.${resumeContext} Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be constructive and encouraging while still specific. A decent answer with correct intent should score at least 6. Reserve scores below 4 for clearly incorrect or empty answers. If a resume was provided, note whether the answer aligns with stated experience. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
     let feedback;
@@ -169,7 +130,7 @@ app.post('/api/get-feedback', async (req, res) => {
 app.post('/api/neural-engagement', async (req, res) => {
   const brainServiceUrl = process.env.BRAIN_SERVICE_URL;
   if (!brainServiceUrl) {
-    return res.json({ available: false, results: null });
+    return res.json({ available: false, pending: true, results: null });
   }
 
   const { transcripts } = req.body; // string[]
@@ -190,21 +151,37 @@ app.post('/api/neural-engagement', async (req, res) => {
         return r.json();
       })
     );
-    res.json({ available: true, results });
+
+    let interpretation = '';
+    try {
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const prompt = `Summarize this neural engagement analysis in plain English for a job candidate in 3-4 short sentences. Include one strength and one concrete improvement tip. Data: ${JSON.stringify(results)}`;
+      const summary = await model.generateContent(prompt);
+      interpretation = summary.response.text().trim();
+    } catch {
+      interpretation = '';
+    }
+
+    res.json({
+      available: true,
+      pending: false,
+      results,
+      interpretation,
+    });
   } catch (error) {
     console.error('Neural Engagement Error:', error);
-    res.json({ available: false, results: null });
+    res.json({ available: false, pending: true, results: null });
   }
 });
 
 // --- ROUTE: Clone Voice (Instant Voice Cloning) ---
 app.post('/api/clone-voice', async (req, res) => {
-  const { audioBase64, mimeType, characterName } = req.body;
+  const { audioBase64, mimeType, interviewerName } = req.body;
   try {
     const buffer = Buffer.from(audioBase64, 'base64');
     const blob = new Blob([buffer], { type: mimeType || 'audio/mpeg' });
     const result = await elevenlabs.voices.ivc.create({
-      name: `MockRot - ${characterName}`,
+      name: `MockCortex - ${interviewerName || 'Custom Voice'}`,
       files: [blob],
       removeBackgroundNoise: true,
     });
@@ -217,7 +194,7 @@ app.post('/api/clone-voice', async (req, res) => {
 
 // --- ROUTE: Clone Voice from YouTube URL ---
 app.post('/api/clone-voice-youtube', async (req, res) => {
-  const { youtubeUrl, characterName } = req.body;
+  const { youtubeUrl, interviewerName } = req.body;
 
   // Validate YouTube URL
   if (!youtubeUrl || !/^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be\/)/.test(youtubeUrl)) {
@@ -225,7 +202,7 @@ app.post('/api/clone-voice-youtube', async (req, res) => {
   }
 
   const tmp = tmpdir();
-  const base = join(tmp, `mockrot-yt-${Date.now()}`);
+  const base = join(tmp, `mockcortex-yt-${Date.now()}`);
 
   try {
     const { default: ytDlp } = await import('yt-dlp-exec');
@@ -251,7 +228,7 @@ app.post('/api/clone-voice-youtube', async (req, res) => {
 
     const blob = new Blob([audioBuffer], { type: 'audio/mpeg' });
     const result = await elevenlabs.voices.ivc.create({
-      name: `MockRot - ${characterName}`,
+      name: `MockCortex - ${interviewerName || 'Custom Voice'}`,
       files: [blob],
       removeBackgroundNoise: true,
     });
@@ -262,7 +239,7 @@ app.post('/api/clone-voice-youtube', async (req, res) => {
     // Clean up any leftover temp files
     readdir(tmp)
       .then((files) => files
-        .filter((f) => f.startsWith('mockrot-yt-'))
+        .filter((f) => f.startsWith('mockcortex-yt-'))
         .forEach((f) => unlink(join(tmp, f)).catch(() => {})))
       .catch(() => {});
     res.status(500).json({ error: 'Failed to extract audio from YouTube. Make sure the video is public and has clear speech.' });

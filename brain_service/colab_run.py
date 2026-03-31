@@ -1,5 +1,5 @@
 """
-MockRot Brain Service — Google Colab / Kaggle Setup
+MockCortex Brain Service — Google Colab / Kaggle Setup
 =====================================================
 Paste this entire file into a Colab or Kaggle code cell and run it.
 

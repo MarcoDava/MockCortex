@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { CHARACTERS } from "../CharactersPage/CharactersPage";
+import { INTERVIEWERS } from "../CharactersPage/CharactersPage";
 
 const steps = [
-  { icon: "🎭", label: "Pick a character", desc: "Choose from our iconic meme interviewers" },
-  { icon: "📄", label: "Paste the JD", desc: "Drop in the job description (and your resume)" },
-  { icon: "🎙️", label: "Do the interview", desc: "5 questions, voice-recorded, webcam on" },
-  { icon: "📊", label: "Get feedback", desc: "AI scores every answer with brutal honesty" },
+  { icon: "🎙️", label: "Choose a voice", desc: "Start with Adam or Rachel, or clone your own" },
+  { icon: "📄", label: "Paste the JD", desc: "Add the role description and optional resume" },
+  { icon: "🎧", label: "Record answers", desc: "Each answer is saved with audio + emotion timeline" },
+  { icon: "🧠", label: "Review insights", desc: "AI feedback plus optional TRIBE v2 brain analysis" },
 ];
 
 const HomePage = () => {
@@ -21,20 +21,20 @@ const HomePage = () => {
       >
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-300 text-sm font-medium">
           <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-          AI Mock Interviews — No cringe, just rizz
+          MockCortex | Professional AI Interview Practice
         </div>
 
         <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none text-white">
           Practice interviews
           <br />
           <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-rose-400 bg-clip-text text-transparent">
-            with your faves
+            with voice-guided coaching
           </span>
         </h1>
 
         <p className="text-gray-400 text-lg max-w-xl mx-auto leading-relaxed">
-          Get roasted by Skibidi Toilet, Trump, or Tung Tung Sahur. Real AI feedback.
-          Actual interview skills. Zero anxiety.
+          Build confidence with structured mock interviews, answer recordings, facial-expression trends,
+          and personalized improvement feedback.
         </p>
 
         <div className="flex items-center justify-center gap-4 pt-2">
@@ -63,8 +63,8 @@ const HomePage = () => {
         <p className="text-center text-gray-500 text-sm font-medium uppercase tracking-widest mb-6">
           Choose your interviewer
         </p>
-        <div className="grid grid-cols-3 gap-4">
-          {CHARACTERS.map((char) => (
+        <div className="grid grid-cols-2 gap-4">
+          {INTERVIEWERS.map((char) => (
             <Link
               key={char.id}
               to="/characters"

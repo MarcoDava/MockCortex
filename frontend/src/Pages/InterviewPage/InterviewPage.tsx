@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "convex/react";
 import { API_BASE } from "@/lib/api";
-import type { Question, Character } from "@/types";
+import { convexGenerateUploadUrl, convexGetFileUrl } from "@/lib/convexFunctions";
+import type { Character, EmotionSample, Question, SessionResult } from "@/types";
 
-type Phase = "loading" | "speaking" | "countdown" | "recording" | "silent" | "interrupted";
+type Phase = "loading" | "speaking" | "countdown" | "recording" | "silent";
 
 // Webkit Speech Recognition type
 interface SpeechRecognitionEvent extends Event {
@@ -14,27 +16,44 @@ interface SpeechRecognitionInstance extends EventTarget {
   interimResults: boolean;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
   start(): void;
   stop(): void;
+}
+
+interface FaceLandmarkerResult {
+  faceBlendshapes?: Array<{
+    categories: Array<{ categoryName: string; score: number }>;
+  }>;
 }
 
 const InterviewPage = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<{ question: string; answer: string }[]>([]);
+  const [answers, setAnswers] = useState<SessionResult[]>([]);
   const [transcript, setTranscript] = useState("");
   const [phase, setPhase] = useState<Phase>("loading");
   const [countdown, setCountdown] = useState(3);
   const [timer, setTimer] = useState(120);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [character, setCharacter] = useState<Character | null>(null);
-  const [interruptMsg, setInterruptMsg] = useState("");
+  const [currentEmotion, setCurrentEmotion] = useState("neutral");
 
   const navigate = useNavigate();
+  const generateUploadUrl = useMutation(convexGenerateUploadUrl);
+  const getFileUrl = useMutation(convexGetFileUrl);
+
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const emotionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const faceLandmarkerRef = useRef<{ detectForVideo: (video: HTMLVideoElement, timestamp: number) => FaceLandmarkerResult } | null>(null);
+  const emotionFrameRef = useRef<number | null>(null);
+  const lastEmotionSampleRef = useRef(0);
+  const answerTimelineRef = useRef<EmotionSample[]>([]);
+  const recordingStartRef = useRef<number>(0);
   const silenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSpeechRef = useRef<number>(Date.now());
 
@@ -53,7 +72,7 @@ const InterviewPage = () => {
   // Start webcam
   useEffect(() => {
     navigator.mediaDevices
-      .getUserMedia({ video: true, audio: false })
+      .getUserMedia({ video: true, audio: true })
       .then((stream) => {
         streamRef.current = stream;
         if (videoRef.current) {
@@ -69,54 +88,152 @@ const InterviewPage = () => {
     };
   }, []);
 
-  // Capture a frame from the webcam as base64 JPEG
-  const captureFrame = (): string | null => {
-    const video = videoRef.current;
-    if (!video || video.readyState < 2) return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = 320;
-    canvas.height = 240;
-    canvas.getContext("2d")?.drawImage(video, 0, 0, 320, 240);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.5);
-    return dataUrl.split(",")[1] ?? null; // strip prefix
-  };
-
-  // Analyze emotion via backend every 15 s during recording
+  // Load MediaPipe Face Landmarker once for continuous in-browser emotion estimation.
   useEffect(() => {
-    if (phase === "recording") {
-      emotionIntervalRef.current = setInterval(async () => {
-        const imageBase64 = captureFrame();
-        if (!imageBase64) return;
-        const voiceId = character?.id ?? "";
-        try {
-          const res = await fetch(`${API_BASE}/api/analyze-emotion`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageBase64, voiceId }),
-          });
-          if (!res.ok) return;
-          const data = (await res.json()) as { emotion: string; shouldInterrupt: boolean; message: string };
-          if (data.shouldInterrupt) {
-            clearInterval(emotionIntervalRef.current!);
-            clearInterval(silenceIntervalRef.current!);
-            recognitionRef.current?.stop();
-            setInterruptMsg(data.message);
-            setPhase("interrupted");
-          }
-        } catch {
-          // Non-fatal
+    let cancelled = false;
+
+    const loadFaceLandmarker = async () => {
+      try {
+        const vision = await import("@mediapipe/tasks-vision");
+        const filesetResolver = await vision.FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+        );
+        const landmarker = await vision.FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+          },
+          outputFaceBlendshapes: true,
+          runningMode: "VIDEO",
+          numFaces: 1,
+        });
+        if (!cancelled) {
+          faceLandmarkerRef.current = landmarker;
         }
-      }, 15000);
-    } else {
-      if (emotionIntervalRef.current) {
-        clearInterval(emotionIntervalRef.current);
-        emotionIntervalRef.current = null;
+      } catch {
+        faceLandmarkerRef.current = null;
       }
-    }
-    return () => {
-      if (emotionIntervalRef.current) clearInterval(emotionIntervalRef.current);
     };
-  }, [phase, character]);
+
+    void loadFaceLandmarker();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const emotionFromBlendshapes = useCallback((categories: Array<{ categoryName: string; score: number }>) => {
+    const scoreOf = (name: string) => categories.find((c) => c.categoryName === name)?.score ?? 0;
+    const smile = (scoreOf("mouthSmileLeft") + scoreOf("mouthSmileRight")) / 2;
+    const frown = (scoreOf("mouthFrownLeft") + scoreOf("mouthFrownRight")) / 2;
+    const surprise = (scoreOf("eyeWideLeft") + scoreOf("eyeWideRight") + scoreOf("jawOpen")) / 3;
+    const focus = (scoreOf("browDownLeft") + scoreOf("browDownRight") + scoreOf("eyeSquintLeft") + scoreOf("eyeSquintRight")) / 4;
+
+    if (smile > 0.45) return { emotion: "confident", confidence: smile };
+    if (surprise > 0.5) return { emotion: "surprised", confidence: surprise };
+    if (frown > 0.4) return { emotion: "stressed", confidence: frown };
+    if (focus > 0.4) return { emotion: "focused", confidence: focus };
+    return { emotion: "neutral", confidence: 0.35 };
+  }, []);
+
+  const stopEmotionTracking = useCallback(() => {
+    if (emotionFrameRef.current != null) {
+      cancelAnimationFrame(emotionFrameRef.current);
+      emotionFrameRef.current = null;
+    }
+  }, []);
+
+  const startEmotionTracking = useCallback(() => {
+    stopEmotionTracking();
+    const landmarker = faceLandmarkerRef.current;
+    const video = videoRef.current;
+    if (!landmarker || !video) return;
+
+    const tick = () => {
+      if (phase !== "recording") return;
+      if (video.readyState >= 2) {
+        const result = landmarker.detectForVideo(video, performance.now());
+        const categories = result.faceBlendshapes?.[0]?.categories;
+        if (categories?.length) {
+          const sample = emotionFromBlendshapes(categories);
+          setCurrentEmotion(sample.emotion);
+
+          const now = Date.now();
+          if (now - lastEmotionSampleRef.current > 1000) {
+            answerTimelineRef.current.push({
+              ts: Math.max(0, now - recordingStartRef.current),
+              emotion: sample.emotion,
+              confidence: Number(sample.confidence.toFixed(3)),
+            });
+            lastEmotionSampleRef.current = now;
+          }
+        }
+      }
+      emotionFrameRef.current = requestAnimationFrame(tick);
+    };
+
+    emotionFrameRef.current = requestAnimationFrame(tick);
+  }, [emotionFromBlendshapes, phase, stopEmotionTracking]);
+
+  const startAudioRecorder = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const hasAudio = stream.getAudioTracks().length > 0;
+    if (!hasAudio) return;
+
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "audio/mp4";
+
+    recordedChunksRef.current = [];
+    const recorder = new MediaRecorder(stream, { mimeType });
+    recorder.ondataavailable = (event: BlobEvent) => {
+      if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+    };
+    recorder.start();
+    mediaRecorderRef.current = recorder;
+  }, []);
+
+  const stopAudioRecorder = useCallback(async (): Promise<Blob | null> => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return null;
+
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blob = recordedChunksRef.current.length
+          ? new Blob(recordedChunksRef.current, { type: recorder.mimeType || "audio/webm" })
+          : null;
+        mediaRecorderRef.current = null;
+        recordedChunksRef.current = [];
+        resolve(blob);
+      };
+      recorder.stop();
+    });
+  }, []);
+
+  const uploadAnswerAudio = useCallback(
+    async (blob: Blob): Promise<{ audioUrl?: string; audioStorageId?: string }> => {
+      try {
+        const uploadUrl = await generateUploadUrl({});
+        const uploadRes = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": blob.type || "audio/webm" },
+          body: blob,
+        });
+        if (!uploadRes.ok) return {};
+        const { storageId } = (await uploadRes.json()) as { storageId?: string };
+        if (!storageId) return {};
+        const resolvedUrl = await getFileUrl({ storageId });
+        return {
+          audioStorageId: storageId,
+          audioUrl: resolvedUrl ?? undefined,
+        };
+      } catch {
+        return {};
+      }
+    },
+    [generateUploadUrl, getFileUrl]
+  );
 
   // Silence detection: >10 s without speech during recording
   useEffect(() => {
@@ -125,7 +242,7 @@ const InterviewPage = () => {
       silenceIntervalRef.current = setInterval(() => {
         if (Date.now() - lastSpeechRef.current > 10000) {
           clearInterval(silenceIntervalRef.current!);
-          clearInterval(emotionIntervalRef.current!);
+          stopEmotionTracking();
           recognitionRef.current?.stop();
           setPhase("silent");
         }
@@ -139,7 +256,7 @@ const InterviewPage = () => {
     return () => {
       if (silenceIntervalRef.current) clearInterval(silenceIntervalRef.current);
     };
-  }, [phase]);
+  }, [phase, stopEmotionTracking]);
 
   const playAIQuestion = useCallback(
     async (text: string) => {
@@ -193,7 +310,7 @@ const InterviewPage = () => {
       const id = setTimeout(() => setTimer((t) => t - 1), 1000);
       return () => clearTimeout(id);
     } else if (phase === "recording" && timer === 0) {
-      handleNext();
+      void handleNext();
     }
   }, [phase, timer]);
 
@@ -209,18 +326,39 @@ const InterviewPage = () => {
       if (result) setTranscript(result[0]?.transcript ?? "");
     };
     rec.onerror = () => {/* non-fatal */};
+    rec.onend = null;
     recognitionRef.current = rec;
+    recordingStartRef.current = Date.now();
+    answerTimelineRef.current = [];
+    lastEmotionSampleRef.current = 0;
+    setCurrentEmotion("neutral");
+    startAudioRecorder();
+    startEmotionTracking();
     rec.start();
   };
 
-  const handleNext = useCallback(() => {
+  const finalizeAnswer = useCallback(async (): Promise<SessionResult> => {
     recognitionRef.current?.stop();
-    clearInterval(emotionIntervalRef.current!);
+    stopEmotionTracking();
     clearInterval(silenceIntervalRef.current!);
-    const newAnswers = [
-      ...answers,
-      { question: questions[currentIdx]?.question ?? "", answer: transcript },
-    ];
+
+    const blob = await stopAudioRecorder();
+    const uploadMeta = blob ? await uploadAnswerAudio(blob) : {};
+
+    return {
+      question: questions[currentIdx]?.question ?? "",
+      answer: transcript,
+      ...uploadMeta,
+      emotionTimeline: answerTimelineRef.current,
+    };
+  }, [currentIdx, questions, stopAudioRecorder, stopEmotionTracking, transcript, uploadAnswerAudio]);
+
+  const handleNext = useCallback(async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const newAnswer = await finalizeAnswer();
+    const newAnswers = [...answers, newAnswer];
+
     if (currentIdx < questions.length - 1) {
       setAnswers(newAnswers);
       setCurrentIdx((i) => i + 1);
@@ -233,7 +371,8 @@ const InterviewPage = () => {
       streamRef.current?.getTracks().forEach((t) => t.stop());
       navigate("/feedback");
     }
-  }, [answers, currentIdx, questions, transcript, navigate]);
+    setIsSubmitting(false);
+  }, [answers, currentIdx, finalizeAnswer, isSubmitting, navigate, questions.length]);
 
   const resumeRecording = () => {
     setTranscript("");
@@ -241,18 +380,13 @@ const InterviewPage = () => {
     setPhase("countdown");
   };
 
-  const endInterview = useCallback(() => {
-    recognitionRef.current?.stop();
-    clearInterval(emotionIntervalRef.current!);
-    clearInterval(silenceIntervalRef.current!);
-    const newAnswers = [
-      ...answers,
-      { question: questions[currentIdx]?.question ?? "", answer: transcript },
-    ];
+  const endInterview = useCallback(async () => {
+    const newAnswer = await finalizeAnswer();
+    const newAnswers = [...answers, newAnswer];
     localStorage.setItem("sessionResults", JSON.stringify(newAnswers));
     streamRef.current?.getTracks().forEach((t) => t.stop());
     navigate("/feedback");
-  }, [answers, currentIdx, questions, transcript, navigate]);
+  }, [answers, finalizeAnswer, navigate]);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
@@ -292,7 +426,7 @@ const InterviewPage = () => {
               />
               {isSpeaking && (
                 <span className="mt-2 bg-yellow-500 text-black px-3 py-0.5 rounded-full text-xs font-bold">
-                  {character.name.toUpperCase()} IS TALKING…
+                  {character.name.toUpperCase()} IS TALKING...
                 </span>
               )}
             </div>
@@ -316,7 +450,7 @@ const InterviewPage = () => {
         {/* Phase UI */}
         {phase === "speaking" && (
           <p className="text-center animate-pulse text-blue-400 text-lg">
-            Interviewer is speaking…
+            Interviewer is speaking...
           </p>
         )}
 
@@ -336,18 +470,22 @@ const InterviewPage = () => {
               <span className="text-red-400 font-mono text-xl font-bold">
                 {formatTime(timer)}
               </span>
+              <span className="text-xs uppercase tracking-wide text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full">
+                emotion: {currentEmotion}
+              </span>
             </div>
             <div className="p-5 border border-red-500 rounded-xl bg-red-900/20 min-h-[80px]">
               <p className="italic text-gray-200">
-                "{transcript || "Listening…"}"
+                "{transcript || "Listening..."}"
               </p>
             </div>
             <div className="flex justify-center">
               <button
-                onClick={handleNext}
-                className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition-colors"
+                onClick={() => void handleNext()}
+                disabled={isSubmitting}
+                className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition-colors disabled:opacity-60"
               >
-                Submit Answer
+                {isSubmitting ? "Saving..." : "Submit Answer"}
               </button>
             </div>
           </div>
@@ -370,38 +508,7 @@ const InterviewPage = () => {
                   Continue Recording
                 </button>
                 <button
-                  onClick={endInterview}
-                  className="bg-gray-700 text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-600 transition-colors"
-                >
-                  End Interview
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Interrupt modal */}
-        {phase === "interrupted" && character && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-yellow-600 rounded-2xl p-8 max-w-sm w-full text-center space-y-4">
-              <img
-                src={character.img}
-                alt={character.name}
-                className="w-20 h-20 rounded-full border-4 border-yellow-400 mx-auto object-cover"
-              />
-              <h2 className="text-lg font-bold text-yellow-400">
-                {character.name} interrupted!
-              </h2>
-              <p className="text-gray-200 italic">"{interruptMsg}"</p>
-              <div className="flex gap-3 justify-center pt-2">
-                <button
-                  onClick={resumeRecording}
-                  className="bg-yellow-500 text-black px-6 py-2 rounded-full font-semibold hover:bg-yellow-400 transition-colors"
-                >
-                  Continue
-                </button>
-                <button
-                  onClick={endInterview}
+                  onClick={() => void endInterview()}
                   className="bg-gray-700 text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-600 transition-colors"
                 >
                   End Interview

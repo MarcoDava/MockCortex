@@ -14,6 +14,7 @@
     "@tailwindcss/cli": "^4.1.18",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/vite": "^4.1.18",
+    "@mediapipe/tasks-vision": "^0.10.14",
     "@types/react-router": "^5.1.20",
     "@types/react-router-dom": "^5.3.3",
     "class-variance-authority": "^0.7.1",

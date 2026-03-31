@@ -1,5 +1,5 @@
 """
-MockRot Brain Analysis Service
+MockCortex Brain Analysis Service
 ================================
 FastAPI service wrapping TRIBE v2 (facebook/tribev2).
 
@@ -63,7 +63,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="MockRot Brain Service", lifespan=lifespan)
+app = FastAPI(title="MockCortex Brain Service", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
