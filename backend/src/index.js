@@ -67,7 +67,7 @@ app.post('/api/parse-resume', async (req, res) => {
   }
   if (!fileBase64) return res.status(400).json({ error: 'No file provided' });
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
     const prompt = `Extract structured information from this resume. Return ONLY JSON: {"name":"full name or empty string","skills":["up to 10 key skills"],"experience":"2-3 sentence summary of work experience","education":"highest degree and field, or empty string","highlights":["up to 3 notable achievements or projects"]}`;
     const result = await model.generateContent([
       prompt,
@@ -100,7 +100,7 @@ app.post('/api/generate-questions', async (req, res) => {
     ? `\nCandidate resume summary: skills: ${resumeSummary.skills?.join(', ') || 'unknown'}. Experience: ${resumeSummary.experience || 'unknown'}. Education: ${resumeSummary.education || 'unknown'}. Highlights: ${resumeSummary.highlights?.join('; ') || 'none'}.`
     : '';
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
     const prompt = `You are a calm, professional interview coach conducting a realistic job interview.${resumeContext}
 
 Job description: ${jobDescription}
@@ -139,7 +139,7 @@ app.post('/api/get-feedback', async (req, res) => {
     ? ` The candidate's resume shows: ${resumeSummary.experience || ''}. Skills: ${resumeSummary.skills?.join(', ') || ''}.`
     : '';
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
     const prompt = `You are a calm, professional interview coach.${resumeContext} Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be constructive and encouraging while still specific. A decent answer with correct intent should score at least 6. Reserve scores below 4 for clearly incorrect or empty answers. If a resume was provided, note whether the answer aligns with stated experience. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
@@ -184,7 +184,7 @@ app.post('/api/neural-engagement', async (req, res) => {
 
     let interpretation = '';
     try {
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-001' });
       const prompt = `Summarize this neural engagement analysis in plain English for a job candidate in 3-4 short sentences. Include one strength and one concrete improvement tip. Data: ${JSON.stringify(results)}`;
       const summary = await model.generateContent(prompt);
       interpretation = summary.response.text().trim();
