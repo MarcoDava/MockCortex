@@ -3,6 +3,7 @@ nixPkgs = ["nodejs_22", "nodePackages.npm", "ffmpeg", "python3"]
 
 [phases.install]
 cmds = ["npm ci"]
+cacheDirectories = []
 
 [start]
 cmd = "node src/index.js"
