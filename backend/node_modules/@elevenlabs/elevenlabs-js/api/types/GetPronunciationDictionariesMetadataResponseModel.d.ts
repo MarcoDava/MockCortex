@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetPronunciationDictionariesMetadataResponseModel {
-    /** A list of pronunciation dictionaries and their metadata. */
-    pronunciationDictionaries: ElevenLabs.GetPronunciationDictionaryMetadataResponse[];
-    /** The next cursor to use for pagination. */
-    nextCursor?: string;
-    /** Whether there are more pronunciation dictionaries to fetch. */
-    hasMore: boolean;
-}

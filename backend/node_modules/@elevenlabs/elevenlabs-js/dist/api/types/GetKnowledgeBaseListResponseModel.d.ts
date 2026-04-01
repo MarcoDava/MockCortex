@@ -1,6 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetKnowledgeBaseListResponseModel {
-    documents: ElevenLabs.GetKnowledgeBaseListResponseModelDocumentsItem[];
-    nextCursor?: string;
-    hasMore: boolean;
-}

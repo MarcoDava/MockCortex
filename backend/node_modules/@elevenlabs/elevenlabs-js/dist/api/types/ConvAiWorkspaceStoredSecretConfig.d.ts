@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface ConvAiWorkspaceStoredSecretConfig {
-    type: "stored";
-    secretId: string;
-    name: string;
-    usedBy: ElevenLabs.ConvAiStoredSecretDependencies;
-}

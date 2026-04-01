@@ -1,4 +1,0 @@
-export interface StartSpeakerSeparationResponseModel {
-    /** The status of the start speaker seperation request. If the request was successful, the status will be 'ok'. Otherwise an error message with status 500 will be returned. */
-    status: string;
-}

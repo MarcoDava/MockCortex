@@ -1,2 +1,0 @@
-export { BodyAddAPronunciationDictionaryV1PronunciationDictionariesAddFromRulesPost } from "./BodyAddAPronunciationDictionaryV1PronunciationDictionariesAddFromRulesPost";
-export { BodyUpdatePronunciationDictionaryV1PronunciationDictionariesPronunciationDictionaryIdPatch } from "./BodyUpdatePronunciationDictionaryV1PronunciationDictionariesPronunciationDictionaryIdPatch";

@@ -1,8 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface SpeakerTrack {
-    id: string;
-    mediaRef: ElevenLabs.DubbingMediaReference;
-    speakerName: string;
-    voices: Record<string, string>;
-    segments: string[];
-}

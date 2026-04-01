@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface Render {
-    id: string;
-    version: number;
-    language?: string;
-    type?: ElevenLabs.RenderType;
-    mediaRef?: ElevenLabs.DubbingMediaReference;
-    status: ElevenLabs.RenderStatus;
-}

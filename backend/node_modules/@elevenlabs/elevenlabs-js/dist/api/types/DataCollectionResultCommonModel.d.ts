@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface DataCollectionResultCommonModel {
-    dataCollectionId: string;
-    value?: unknown;
-    jsonSchema?: ElevenLabs.LiteralJsonSchemaProperty;
-    rationale: string;
-}

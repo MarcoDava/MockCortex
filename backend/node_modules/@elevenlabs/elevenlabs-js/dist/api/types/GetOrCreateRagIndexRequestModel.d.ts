@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetOrCreateRagIndexRequestModel {
-    /** ID of the knowledgebase document for which to retrieve the index */
-    documentId: string;
-    /** Whether to create the RAG index if it does not exist */
-    createIfMissing: boolean;
-    /** Embedding model to use for the RAG index */
-    model: ElevenLabs.EmbeddingModelEnum;
-}

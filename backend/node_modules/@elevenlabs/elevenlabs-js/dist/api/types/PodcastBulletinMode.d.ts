@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface PodcastBulletinMode {
-    /** The voice settings for the bulletin. */
-    bulletin: ElevenLabs.PodcastBulletinModeData;
-}

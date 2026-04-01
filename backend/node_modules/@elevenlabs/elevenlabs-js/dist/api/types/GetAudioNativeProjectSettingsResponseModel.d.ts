@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetAudioNativeProjectSettingsResponseModel {
-    /** Whether the project is enabled. */
-    enabled: boolean;
-    /** The ID of the latest snapshot of the project. */
-    snapshotId?: string;
-    /** The settings of the project. */
-    settings?: ElevenLabs.AudioNativeProjectSettingsResponseModel;
-}

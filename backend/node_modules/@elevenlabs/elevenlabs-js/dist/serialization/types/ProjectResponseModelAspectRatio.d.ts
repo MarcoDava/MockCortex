@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import type * as serializers from "../index";
-export declare const ProjectResponseModelAspectRatio: core.serialization.Schema<serializers.ProjectResponseModelAspectRatio.Raw, ElevenLabs.ProjectResponseModelAspectRatio>;
-export declare namespace ProjectResponseModelAspectRatio {
-    type Raw = "16:9" | "9:16" | "4:5" | "1:1";
-}

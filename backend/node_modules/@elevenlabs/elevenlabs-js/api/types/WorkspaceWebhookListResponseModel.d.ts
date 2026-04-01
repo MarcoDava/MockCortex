@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface WorkspaceWebhookListResponseModel {
-    /** List of webhooks currently configured for the workspace */
-    webhooks: ElevenLabs.WorkspaceWebhookResponseModel[];
-}

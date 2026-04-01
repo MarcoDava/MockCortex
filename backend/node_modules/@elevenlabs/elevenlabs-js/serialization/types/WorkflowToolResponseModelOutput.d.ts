@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import * as serializers from "../index";
-export declare const WorkflowToolResponseModelOutput: core.serialization.ObjectSchema<serializers.WorkflowToolResponseModelOutput.Raw, ElevenLabs.WorkflowToolResponseModelOutput>;
-export declare namespace WorkflowToolResponseModelOutput {
-    interface Raw {
-        steps?: serializers.WorkflowToolResponseModelOutputStepsItem.Raw[] | null;
-    }
-}

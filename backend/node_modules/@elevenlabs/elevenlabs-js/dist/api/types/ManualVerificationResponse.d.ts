@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface ManualVerificationResponse {
-    /** The extra text of the manual verification. */
-    extraText: string;
-    /** The date of the manual verification in Unix time. */
-    requestTimeUnix: number;
-    /** The files of the manual verification. */
-    files: ElevenLabs.ManualVerificationFileResponse[];
-}

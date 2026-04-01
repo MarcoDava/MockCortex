@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetAgentsPageResponseModel {
-    /** A list of agents and their metadata */
-    agents: ElevenLabs.AgentSummaryResponseModel[];
-    /** The next cursor to paginate through the agents */
-    nextCursor?: string;
-    /** Whether there are more agents to paginate through */
-    hasMore: boolean;
-}

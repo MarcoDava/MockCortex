@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * The pending change for the user.
- */
-export type ExtendedSubscriptionResponseModelPendingChange = ElevenLabs.PendingSubscriptionSwitchResponseModel | ElevenLabs.PendingCancellationResponseModel;

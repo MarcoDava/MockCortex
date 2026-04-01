@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface LlmInputOutputTokensUsage {
-    input?: ElevenLabs.LlmTokensCategoryUsage;
-    inputCacheRead?: ElevenLabs.LlmTokensCategoryUsage;
-    inputCacheWrite?: ElevenLabs.LlmTokensCategoryUsage;
-    outputTotal?: ElevenLabs.LlmTokensCategoryUsage;
-}

@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * Response model for a list of MCP Server configurations.
- */
-export interface McpServersResponseModel {
-    mcpServers: ElevenLabs.McpServerResponseModel[];
-}

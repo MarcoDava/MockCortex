@@ -1,8 +1,0 @@
-export interface WorkspaceGroupByNameResponseModel {
-    /** The name of the workspace group. */
-    name: string;
-    /** The ID of the workspace group. */
-    id: string;
-    /** The emails of the members of the workspace group. */
-    membersEmails: string[];
-}

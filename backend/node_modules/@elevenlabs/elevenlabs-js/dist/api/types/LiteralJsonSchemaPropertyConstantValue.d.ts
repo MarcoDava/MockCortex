@@ -1,4 +1,0 @@
-/**
- * A constant value to use for this property. Mutually exclusive with description, dynamic_variable, and is_system_provided.
- */
-export type LiteralJsonSchemaPropertyConstantValue = string | number | number | boolean;

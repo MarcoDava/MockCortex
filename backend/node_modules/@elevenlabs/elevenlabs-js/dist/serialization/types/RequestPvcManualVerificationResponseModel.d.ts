@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import type * as serializers from "../index";
-export declare const RequestPvcManualVerificationResponseModel: core.serialization.ObjectSchema<serializers.RequestPvcManualVerificationResponseModel.Raw, ElevenLabs.RequestPvcManualVerificationResponseModel>;
-export declare namespace RequestPvcManualVerificationResponseModel {
-    interface Raw {
-        status: string;
-    }
-}

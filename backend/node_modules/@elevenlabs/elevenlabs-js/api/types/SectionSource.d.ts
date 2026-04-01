@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface SectionSource {
-    /** The ID of the song to source the section from. You can find the song ID in the response headers when you generate a song. */
-    songId: string;
-    /** The range to extract from the source song. */
-    range: ElevenLabs.TimeRange;
-    /** The ranges to exclude from the 'range'. */
-    negativeRanges?: ElevenLabs.TimeRange[];
-}

@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import type * as serializers from "../index";
-export declare const AllowlistItem: core.serialization.ObjectSchema<serializers.AllowlistItem.Raw, ElevenLabs.AllowlistItem>;
-export declare namespace AllowlistItem {
-    interface Raw {
-        hostname: string;
-    }
-}

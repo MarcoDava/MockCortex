@@ -1,6 +1,0 @@
-export interface DubbingMediaMetadata {
-    /** The content type of the media. */
-    contentType: string;
-    /** The duration of the media in seconds. */
-    duration: number;
-}

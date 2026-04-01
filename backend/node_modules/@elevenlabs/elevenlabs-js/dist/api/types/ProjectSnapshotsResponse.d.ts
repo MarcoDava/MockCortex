@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface ProjectSnapshotsResponse {
-    /** List of project snapshots. */
-    snapshots: ElevenLabs.ProjectSnapshotResponse[];
-}

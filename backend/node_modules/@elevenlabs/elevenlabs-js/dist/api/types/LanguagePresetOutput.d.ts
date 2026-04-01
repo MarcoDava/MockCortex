@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface LanguagePresetOutput {
-    /** The overrides for the language preset */
-    overrides: ElevenLabs.ConversationConfigClientOverrideOutput;
-    /** The translation of the first message */
-    firstMessageTranslation?: ElevenLabs.LanguagePresetTranslation;
-    /** The translation of the soft timeout message */
-    softTimeoutTranslation?: ElevenLabs.LanguagePresetTranslation;
-}

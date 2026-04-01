@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * A common model for workflow tool responses.
- */
-export interface WorkflowToolResponseModelInput {
-    steps?: ElevenLabs.WorkflowToolResponseModelInputStepsItem[];
-}

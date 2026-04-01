@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * Configuration for backup LLM cascading. Can be disabled, use system defaults, or specify custom order.
- */
-export type PromptAgentApiModelWorkflowOverrideInputBackupLlmConfig = ElevenLabs.BackupLlmDefault | ElevenLabs.BackupLlmDisabled | ElevenLabs.BackupLlmOverride;

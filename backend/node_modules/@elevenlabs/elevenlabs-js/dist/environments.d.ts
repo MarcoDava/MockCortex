@@ -1,7 +1,0 @@
-export declare const ElevenLabsEnvironment: {
-    readonly Production: "https://api.elevenlabs.io";
-    readonly ProductionUs: "https://api.us.elevenlabs.io";
-    readonly ProductionEu: "https://api.eu.residency.elevenlabs.io";
-    readonly ProductionIndia: "https://api.in.residency.elevenlabs.io";
-};
-export type ElevenLabsEnvironment = typeof ElevenLabsEnvironment.Production | typeof ElevenLabsEnvironment.ProductionUs | typeof ElevenLabsEnvironment.ProductionEu | typeof ElevenLabsEnvironment.ProductionIndia;

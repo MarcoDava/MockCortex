@@ -1,6 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface DubbingMetadataPageResponseModel {
-    dubs: ElevenLabs.DubbingMetadataResponse[];
-    nextCursor?: string;
-    hasMore: boolean;
-}

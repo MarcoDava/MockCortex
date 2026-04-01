@@ -1,8 +1,0 @@
-import type * as ElevenLabs from "../../../../../../api/index";
-import * as core from "../../../../../../core";
-import type * as serializers from "../../../../../index";
-import { WorkspaceGroupByNameResponseModel } from "../../../../../types/WorkspaceGroupByNameResponseModel";
-export declare const Response: core.serialization.Schema<serializers.workspace.groups.search.Response.Raw, ElevenLabs.WorkspaceGroupByNameResponseModel[]>;
-export declare namespace Response {
-    type Raw = WorkspaceGroupByNameResponseModel.Raw[];
-}

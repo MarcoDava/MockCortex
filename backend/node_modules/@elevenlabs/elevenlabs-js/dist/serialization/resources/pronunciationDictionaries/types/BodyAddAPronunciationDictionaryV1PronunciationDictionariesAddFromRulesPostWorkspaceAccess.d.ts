@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../../../../api/index";
-import * as core from "../../../../core";
-import type * as serializers from "../../../index";
-export declare const BodyAddAPronunciationDictionaryV1PronunciationDictionariesAddFromRulesPostWorkspaceAccess: core.serialization.Schema<serializers.BodyAddAPronunciationDictionaryV1PronunciationDictionariesAddFromRulesPostWorkspaceAccess.Raw, ElevenLabs.BodyAddAPronunciationDictionaryV1PronunciationDictionariesAddFromRulesPostWorkspaceAccess>;
-export declare namespace BodyAddAPronunciationDictionaryV1PronunciationDictionariesAddFromRulesPostWorkspaceAccess {
-    type Raw = "admin" | "editor" | "commenter" | "viewer";
-}

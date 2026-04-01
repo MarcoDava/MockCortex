@@ -1,2 +1,0 @@
-export { BodyCreateChapterV1StudioProjectsProjectIdChaptersPost } from "./BodyCreateChapterV1StudioProjectsProjectIdChaptersPost";
-export { BodyUpdateChapterV1StudioProjectsProjectIdChaptersChapterIdPost } from "./BodyUpdateChapterV1StudioProjectsProjectIdChaptersChapterIdPost";

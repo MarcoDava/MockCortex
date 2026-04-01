@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface RagIndexOverviewEmbeddingModelResponseModel {
-    model: ElevenLabs.EmbeddingModelEnum;
-    usedBytes: number;
-}

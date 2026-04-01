@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface ProjectCreationMetaResponseModel {
-    /** The progress of the project creation. */
-    creationProgress: number;
-    /** The status of the project creation action. */
-    status: ElevenLabs.ProjectCreationMetaResponseModelStatus;
-    /** The type of the project creation action. */
-    type: ElevenLabs.ProjectCreationMetaResponseModelType;
-}

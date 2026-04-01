@@ -1,2 +1,0 @@
-export { BodyCreateWorkspaceWebhookV1WorkspaceWebhooksPost } from "./BodyCreateWorkspaceWebhookV1WorkspaceWebhooksPost";
-export { BodyUpdateWorkspaceWebhookV1WorkspaceWebhooksWebhookIdPatch } from "./BodyUpdateWorkspaceWebhookV1WorkspaceWebhooksWebhookIdPatch";

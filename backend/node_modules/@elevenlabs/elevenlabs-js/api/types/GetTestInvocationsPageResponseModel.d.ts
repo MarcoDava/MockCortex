@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetTestInvocationsPageResponseModel {
-    meta?: ElevenLabs.ListResponseMeta;
-    results: ElevenLabs.TestInvocationSummaryResponseModel[];
-    /** Cursor for the next page of results */
-    nextCursor?: string;
-    /** Whether there are more results available */
-    hasMore: boolean;
-}

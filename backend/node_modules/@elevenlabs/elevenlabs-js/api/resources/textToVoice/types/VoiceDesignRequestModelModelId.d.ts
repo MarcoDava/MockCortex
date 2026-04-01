@@ -1,6 +1,0 @@
-/** Model to use for the voice generation. Possible values: eleven_multilingual_ttv_v2, eleven_ttv_v3. */
-export declare const VoiceDesignRequestModelModelId: {
-    readonly ElevenMultilingualTtvV2: "eleven_multilingual_ttv_v2";
-    readonly ElevenTtvV3: "eleven_ttv_v3";
-};
-export type VoiceDesignRequestModelModelId = (typeof VoiceDesignRequestModelModelId)[keyof typeof VoiceDesignRequestModelModelId];

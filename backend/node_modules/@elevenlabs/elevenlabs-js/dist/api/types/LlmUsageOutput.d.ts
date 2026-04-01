@@ -1,4 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface LlmUsageOutput {
-    modelUsage?: Record<string, ElevenLabs.LlmInputOutputTokensUsage>;
-}

@@ -1,8 +1,0 @@
-import type * as ElevenLabs from "../../../../../../../../api/index";
-import * as core from "../../../../../../../../core";
-import type * as serializers from "../../../../../../../index";
-import { VoiceSample } from "../../../../../../../types/VoiceSample";
-export declare const Response: core.serialization.Schema<serializers.voices.pvc.samples.create.Response.Raw, ElevenLabs.VoiceSample[]>;
-export declare namespace Response {
-    type Raw = VoiceSample.Raw[];
-}

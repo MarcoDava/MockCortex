@@ -1,8 +1,0 @@
-import type * as ElevenLabs from "../../../../../../api/index";
-import * as core from "../../../../../../core";
-import type * as serializers from "../../../../../index";
-import { PhoneNumbersListResponseItem } from "../types/PhoneNumbersListResponseItem";
-export declare const Response: core.serialization.Schema<serializers.conversationalAi.phoneNumbers.list.Response.Raw, ElevenLabs.conversationalAi.PhoneNumbersListResponseItem[]>;
-export declare namespace Response {
-    type Raw = PhoneNumbersListResponseItem.Raw[];
-}

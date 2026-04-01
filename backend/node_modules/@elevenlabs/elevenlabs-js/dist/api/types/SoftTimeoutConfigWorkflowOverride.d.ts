@@ -1,8 +1,0 @@
-export interface SoftTimeoutConfigWorkflowOverride {
-    /** Time in seconds before showing the predefined message while waiting for LLM response. Set to -1 to disable. */
-    timeoutSeconds?: number;
-    /** Message to show when soft timeout is reached while waiting for LLM response */
-    message?: string;
-    /** If enabled, the soft timeout message will be generated dynamically instead of using the static message. */
-    useLlmGeneratedMessage?: boolean;
-}

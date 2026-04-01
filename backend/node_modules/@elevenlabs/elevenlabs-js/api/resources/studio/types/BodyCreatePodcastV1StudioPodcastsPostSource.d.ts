@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../../../index";
-/**
- * The source content for the Podcast.
- */
-export type BodyCreatePodcastV1StudioPodcastsPostSource = ElevenLabs.PodcastTextSource | ElevenLabs.PodcastUrlSource | ElevenLabs.BodyCreatePodcastV1StudioPodcastsPostSourceTwoItem[];

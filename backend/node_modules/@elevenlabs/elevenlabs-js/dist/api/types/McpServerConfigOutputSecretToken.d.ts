@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * The secret token (Authorization header) stored as a workspace secret or in-place secret
- */
-export type McpServerConfigOutputSecretToken = ElevenLabs.ConvAiSecretLocator | ElevenLabs.ConvAiUserSecretDbModel;

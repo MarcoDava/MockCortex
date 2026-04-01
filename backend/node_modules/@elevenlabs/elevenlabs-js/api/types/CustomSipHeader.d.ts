@@ -1,9 +1,0 @@
-/**
- * Custom SIP header for phone transfers with a static (validated) value.
- */
-export interface CustomSipHeader {
-    /** The SIP header name (e.g., 'X-Customer-ID') */
-    key: string;
-    /** The header value */
-    value: string;
-}

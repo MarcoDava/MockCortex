@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../../../../../../../api/index";
-import * as core from "../../../../../../../core";
-import type * as serializers from "../../../../../../index";
-export declare const BodyDuplicateAgentV1ConvaiAgentsAgentIdDuplicatePost: core.serialization.Schema<serializers.conversationalAi.BodyDuplicateAgentV1ConvaiAgentsAgentIdDuplicatePost.Raw, ElevenLabs.conversationalAi.BodyDuplicateAgentV1ConvaiAgentsAgentIdDuplicatePost>;
-export declare namespace BodyDuplicateAgentV1ConvaiAgentsAgentIdDuplicatePost {
-    interface Raw {
-        name?: string | null;
-    }
-}

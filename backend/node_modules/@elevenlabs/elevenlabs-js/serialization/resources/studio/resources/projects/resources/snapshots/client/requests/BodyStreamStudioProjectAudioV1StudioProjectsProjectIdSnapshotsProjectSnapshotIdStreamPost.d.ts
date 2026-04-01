@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../../../../../../../../../api/index";
-import * as core from "../../../../../../../../../core";
-import type * as serializers from "../../../../../../../../index";
-export declare const BodyStreamStudioProjectAudioV1StudioProjectsProjectIdSnapshotsProjectSnapshotIdStreamPost: core.serialization.Schema<serializers.studio.projects.BodyStreamStudioProjectAudioV1StudioProjectsProjectIdSnapshotsProjectSnapshotIdStreamPost.Raw, ElevenLabs.studio.projects.BodyStreamStudioProjectAudioV1StudioProjectsProjectIdSnapshotsProjectSnapshotIdStreamPost>;
-export declare namespace BodyStreamStudioProjectAudioV1StudioProjectsProjectIdSnapshotsProjectSnapshotIdStreamPost {
-    interface Raw {
-        convert_to_mpeg?: boolean | null;
-    }
-}

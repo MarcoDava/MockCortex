@@ -1,8 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface WorkspaceBatchCallsResponse {
-    batchCalls: ElevenLabs.BatchCallResponse[];
-    /** The next document, used to paginate through the batch calls */
-    nextDoc?: string;
-    /** Whether there are more batch calls to paginate through */
-    hasMore?: boolean;
-}

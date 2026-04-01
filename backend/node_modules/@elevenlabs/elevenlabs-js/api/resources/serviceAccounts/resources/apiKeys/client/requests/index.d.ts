@@ -1,2 +1,0 @@
-export type { BodyCreateServiceAccountApiKeyV1ServiceAccountsServiceAccountUserIdApiKeysPost } from "./BodyCreateServiceAccountApiKeyV1ServiceAccountsServiceAccountUserIdApiKeysPost";
-export type { BodyEditServiceAccountApiKeyV1ServiceAccountsServiceAccountUserIdApiKeysApiKeyIdPatch } from "./BodyEditServiceAccountApiKeyV1ServiceAccountsServiceAccountUserIdApiKeysApiKeyIdPatch";

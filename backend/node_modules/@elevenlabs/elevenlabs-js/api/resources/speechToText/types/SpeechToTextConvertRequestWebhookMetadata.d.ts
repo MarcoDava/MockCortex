@@ -1,4 +1,0 @@
-/**
- * Optional metadata to be included in the webhook response. This should be a JSON string representing an object with a maximum depth of 2 levels and maximum size of 16KB. Useful for tracking internal IDs, job references, or other contextual information.
- */
-export type SpeechToTextConvertRequestWebhookMetadata = string | Record<string, unknown>;

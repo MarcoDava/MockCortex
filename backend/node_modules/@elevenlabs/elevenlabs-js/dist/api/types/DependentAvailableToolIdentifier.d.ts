@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface DependentAvailableToolIdentifier {
-    id: string;
-    name: string;
-    createdAtUnixSecs: number;
-    accessLevel: ElevenLabs.DependentAvailableToolIdentifierAccessLevel;
-}

@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface RegionConfigRequest {
-    /** Region ID */
-    regionId: ElevenLabs.TwilioRegionId;
-    /** Auth Token for this region */
-    token: string;
-    /** Edge location for this region */
-    edgeLocation: ElevenLabs.TwilioEdgeLocation;
-}

@@ -1,8 +1,0 @@
-/**
- * @example
- *     {}
- */
-export interface BodyStreamStudioProjectAudioV1StudioProjectsProjectIdSnapshotsProjectSnapshotIdStreamPost {
-    /** Whether to convert the audio to mpeg format. */
-    convertToMpeg?: boolean;
-}

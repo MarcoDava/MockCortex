@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import type * as serializers from "../index";
-export declare const BreakdownTypes: core.serialization.Schema<serializers.BreakdownTypes.Raw, ElevenLabs.BreakdownTypes>;
-export declare namespace BreakdownTypes {
-    type Raw = "none" | "voice" | "voice_multiplier" | "user" | "groups" | "api_keys" | "all_api_keys" | "product_type" | "model" | "resource" | "request_queue" | "region" | "subresource_id" | "reporting_workspace_id" | "has_api_key" | "request_source";
-}

@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface QueryParamsJsonSchema {
-    properties: Record<string, ElevenLabs.LiteralJsonSchemaProperty>;
-    required?: string[];
-}

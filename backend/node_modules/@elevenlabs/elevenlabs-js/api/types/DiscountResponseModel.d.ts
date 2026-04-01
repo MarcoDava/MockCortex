@@ -1,6 +1,0 @@
-export interface DiscountResponseModel {
-    /** The discount applied to the invoice. E.g. [20.0f] for 20% off. */
-    discountPercentOff?: number;
-    /** The discount applied to the invoice. E.g. [20.0f] for 20 cents off. */
-    discountAmountOff?: number;
-}

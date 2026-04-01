@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface WorkflowStartNodeModelInput {
-    /** Position of the node in the workflow. */
-    position?: ElevenLabs.PositionInput;
-    /** The ids of outgoing edges in the order they should be evaluated. */
-    edgeOrder?: string[];
-}

@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import type * as serializers from "../index";
-export declare const PendingSubscriptionSwitchResponseModelNextTier: core.serialization.Schema<serializers.PendingSubscriptionSwitchResponseModelNextTier.Raw, ElevenLabs.PendingSubscriptionSwitchResponseModelNextTier>;
-export declare namespace PendingSubscriptionSwitchResponseModelNextTier {
-    type Raw = "free" | "starter" | "creator" | "pro" | "growing_business" | "scale_2024_08_10" | "grant_tier_1_2025_07_23" | "grant_tier_2_2025_07_23" | "trial" | "enterprise";
-}

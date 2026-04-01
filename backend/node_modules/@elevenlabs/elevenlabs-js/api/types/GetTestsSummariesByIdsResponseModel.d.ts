@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface GetTestsSummariesByIdsResponseModel {
-    /** Dictionary mapping test IDs to their summary information */
-    tests: Record<string, ElevenLabs.UnitTestSummaryResponseModel>;
-}

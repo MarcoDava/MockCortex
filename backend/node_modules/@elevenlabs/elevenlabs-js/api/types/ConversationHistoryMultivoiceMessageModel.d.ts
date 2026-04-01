@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * Represents a message from a multi-voice agent.
- */
-export interface ConversationHistoryMultivoiceMessageModel {
-    parts: ElevenLabs.ConversationHistoryMultivoiceMessagePartModel[];
-}

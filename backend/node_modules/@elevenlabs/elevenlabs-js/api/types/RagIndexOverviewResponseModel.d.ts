@@ -1,6 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface RagIndexOverviewResponseModel {
-    totalUsedBytes: number;
-    totalMaxBytes: number;
-    models: ElevenLabs.RagIndexOverviewEmbeddingModelResponseModel[];
-}

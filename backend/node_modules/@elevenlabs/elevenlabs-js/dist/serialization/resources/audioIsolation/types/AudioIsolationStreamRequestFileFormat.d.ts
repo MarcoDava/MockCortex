@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../../../../api/index";
-import * as core from "../../../../core";
-import type * as serializers from "../../../index";
-export declare const AudioIsolationStreamRequestFileFormat: core.serialization.Schema<serializers.AudioIsolationStreamRequestFileFormat.Raw, ElevenLabs.AudioIsolationStreamRequestFileFormat>;
-export declare namespace AudioIsolationStreamRequestFileFormat {
-    type Raw = "pcm_s16le_16" | "other";
-}

@@ -1,8 +1,0 @@
-import type * as ElevenLabs from "../../api/index";
-import * as core from "../../core";
-import * as serializers from "../index";
-import { LiteralJsonSchemaProperty } from "./LiteralJsonSchemaProperty";
-export declare const ArrayJsonSchemaPropertyInputItems: core.serialization.Schema<serializers.ArrayJsonSchemaPropertyInputItems.Raw, ElevenLabs.ArrayJsonSchemaPropertyInputItems>;
-export declare namespace ArrayJsonSchemaPropertyInputItems {
-    type Raw = LiteralJsonSchemaProperty.Raw | serializers.ObjectJsonSchemaPropertyInput.Raw | serializers.ArrayJsonSchemaPropertyInput.Raw;
-}

@@ -1,4 +1,0 @@
-export interface DeleteHistoryItemResponse {
-    /** The status of the deletion request. If the request was successful, the status will be 'ok'. Otherwise an error message with http code 500 will be returned. */
-    status: string;
-}

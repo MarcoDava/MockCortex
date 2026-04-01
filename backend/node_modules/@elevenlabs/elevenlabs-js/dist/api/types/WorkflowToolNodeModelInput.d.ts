@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface WorkflowToolNodeModelInput {
-    /** Position of the node in the workflow. */
-    position?: ElevenLabs.PositionInput;
-    /** The ids of outgoing edges in the order they should be evaluated. */
-    edgeOrder?: string[];
-    /** List of tools to execute in parallel. The entire node is considered successful if all tools are executed successfully. */
-    tools?: ElevenLabs.WorkflowToolLocator[];
-}

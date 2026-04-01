@@ -1,5 +1,0 @@
-import type * as ElevenLabs from "../index";
-/**
- * The URL of the MCP server, if this contains a secret please store as a workspace secret, otherwise store as a plain string. Must use https
- */
-export type McpServerConfigOutputUrl = string | ElevenLabs.ConvAiSecretLocator;

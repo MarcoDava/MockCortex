@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface SpeakerSegment {
-    id: string;
-    startTime: number;
-    endTime: number;
-    text: string;
-    subtitles: ElevenLabs.SegmentSubtitleFrame[];
-    dubs: Record<string, ElevenLabs.DubbedSegment>;
-}

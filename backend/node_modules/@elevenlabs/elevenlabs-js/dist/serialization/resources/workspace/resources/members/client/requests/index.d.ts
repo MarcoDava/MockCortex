@@ -1,1 +1,0 @@
-export { UpdateMemberRequest } from "./UpdateMemberRequest";

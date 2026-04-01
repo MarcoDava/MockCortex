@@ -1,9 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface SpeakerResponseModel {
-    /** The ID of the speaker. */
-    speakerId: string;
-    /** The duration of the speaker segment in seconds. */
-    durationSecs: number;
-    /** The utterances of the speaker. */
-    utterances?: ElevenLabs.UtteranceResponseModel[];
-}

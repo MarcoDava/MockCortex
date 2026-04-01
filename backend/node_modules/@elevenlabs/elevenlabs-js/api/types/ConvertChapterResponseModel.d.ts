@@ -1,4 +1,0 @@
-export interface ConvertChapterResponseModel {
-    /** The status of the studio chapter conversion request. If the request was successful, the status will be 'ok'. Otherwise an error message with status 500 will be returned. */
-    status: string;
-}

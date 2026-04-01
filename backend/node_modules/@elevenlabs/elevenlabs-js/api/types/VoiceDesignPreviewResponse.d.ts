@@ -1,7 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface VoiceDesignPreviewResponse {
-    /** The previews of the generated voices. */
-    previews: ElevenLabs.VoicePreviewResponseModel[];
-    /** The text used to preview the voices. */
-    text: string;
-}

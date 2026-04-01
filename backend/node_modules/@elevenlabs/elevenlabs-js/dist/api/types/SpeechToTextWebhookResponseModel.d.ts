@@ -1,8 +1,0 @@
-export interface SpeechToTextWebhookResponseModel {
-    /** The message of the webhook response. */
-    message: string;
-    /** The request ID of the webhook response. */
-    requestId: string;
-    /** The transcription ID of the webhook response. */
-    transcriptionId?: string;
-}

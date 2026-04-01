@@ -1,4 +1,0 @@
-export interface ModelSettingsResponseModel {
-    /** Determines how stable the voice is and the randomness between each generation. Lower values introduce broader emotional range for the voice. Higher values can result in a monotonous voice with limited emotion. */
-    stability?: number;
-}

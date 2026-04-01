@@ -1,6 +1,0 @@
-import type * as ElevenLabs from "../index";
-export interface ConversationHistoryEvaluationCriteriaResultCommonModel {
-    criteriaId: string;
-    result: ElevenLabs.EvaluationSuccessResult;
-    rationale: string;
-}
