@@ -5,18 +5,18 @@ import { API_BASE } from "@/lib/api";
 
 export const INTERVIEWERS = [
   {
-    id: "pNInz6obpgDQGcFmaJgB",
-    name: "Adam",
-    key: "adam",
+    id: "sB7vwSCyX0tQmU24cW2C",
+    name: "Jon",
+    key: "jon",
     img: "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800",
     description: "Confident male interviewer with a clear and steady delivery.",
     tag: "Male Voice",
     tagColor: "text-cyan-300 bg-cyan-500/10 border-cyan-500/20",
   },
   {
-    id: "21m00Tcm4TlvDq8ikWAM",
-    name: "Rachel",
-    key: "rachel",
+    id: "zGjIP4SZlMnY9m93k97r",
+    name: "Hope",
+    key: "hope",
     img: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=800",
     description: "Warm female interviewer voice tuned for clarity and calm pacing.",
     tag: "Female Voice",
@@ -142,7 +142,7 @@ const CharactersPage = () => {
             </span>
           </h1>
           <p className="text-gray-400 text-base max-w-md mx-auto">
-            Start with Adam or Rachel. You can upload custom samples or use a YouTube clip for voice cloning.
+            Start with Jon or Hope. You can upload custom samples or use a YouTube clip for voice cloning.
           </p>
         </div>
 

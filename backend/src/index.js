@@ -44,7 +44,7 @@ app.post('/api/ask-question', async (req, res) => {
     return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
   }
   try {
-    const audio = await elevenlabs.textToSpeech.convert(voiceId || 'JBFqnCBsd6RMkjVDRZzb', {
+    const audio = await elevenlabs.textToSpeech.convert(voiceId || 'sB7vwSCyX0tQmU24cW2C', {
       text: question,
       modelId: 'eleven_turbo_v2_5',
     });
