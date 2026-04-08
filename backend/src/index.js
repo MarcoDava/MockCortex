@@ -35,7 +35,13 @@ app.post('/api/ask-question', async (req, res) => {
   try {
     const audio = await elevenlabs.textToSpeech.convert(voiceId || 'JBFqnCBsd6RMkjVDRZzb', {
       text: question,
-      modelId: 'eleven_turbo_v2_5',
+      modelId: 'eleven_multilingual_v2',  // higher quality, more natural than turbo
+      voiceSettings: {
+        stability: 0.35,          // lower = more expressive/varied delivery
+        similarityBoost: 0.75,    // how closely it matches the voice clone
+        style: 0.45,              // style exaggeration — adds emotion and rhythm
+        useSpeakerBoost: true,    // enhances clarity and presence
+      },
     });
     res.setHeader('Content-Type', 'audio/mpeg');
     for await (const chunk of audio) {
@@ -82,18 +88,7 @@ app.post('/api/generate-questions', async (req, res) => {
     : '';
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-    const prompt = `You are ${persona} conducting a realistic job interview.${resumeContext}
-
-Job description: ${jobDescription}
-
-Generate exactly 5 interview questions following this realistic interview structure:
-1. Intro: A warm "tell me about yourself" style opener (type: "intro")
-2. Resume: A specific question referencing the candidate's actual background${resumeSummary ? ' from their resume' : ''} (type: "resume")
-3. Behavioral: A STAR-format behavioral question relevant to the role (type: "behavioral")
-4. Technical: A technical or skills-based question for the role (type: "technical")
-5. Situational: A "what would you do if..." scenario question (type: "situational")
-
-Stay in character throughout. Return ONLY JSON: [{"question":"text","type":"intro|resume|behavioral|technical|situational"}]`;
+    const prompt = `You are ${persona} conducting a realistic job interview.${resumeContext}\n\nJob description: ${jobDescription}\n\nGenerate exactly 5 interview questions following this realistic interview structure:\n1. Intro: A warm "tell me about yourself" style opener (type: "intro")\n2. Resume: A specific question referencing the candidate's actual background${resumeSummary ? ' from their resume' : ''} (type: "resume")\n3. Behavioral: A STAR-format behavioral question relevant to the role (type: "behavioral")\n4. Technical: A technical or skills-based question for the role (type: "technical")\n5. Situational: A "what would you do if..." scenario question (type: "situational")\n\nStay in character throughout. Return ONLY JSON: [{"question":"text","type":"intro|resume|behavioral|technical|situational"}]`;
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
     let questions;
@@ -135,7 +130,6 @@ app.post('/api/analyze-emotion', async (req, res) => {
     res.json(parsed);
   } catch (error) {
     console.error('Emotion Analysis Error:', error);
-    // Non-fatal: return neutral so interview continues
     res.json({ emotion: 'neutral', shouldInterrupt: false, message: '' });
   }
 });
@@ -172,7 +166,7 @@ app.post('/api/neural-engagement', async (req, res) => {
     return res.json({ available: false, results: null });
   }
 
-  const { transcripts } = req.body; // string[]
+  const { transcripts } = req.body;
   if (!Array.isArray(transcripts) || transcripts.length === 0) {
     return res.status(400).json({ error: 'transcripts must be a non-empty array' });
   }
@@ -184,7 +178,7 @@ app.post('/api/neural-engagement', async (req, res) => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text }),
-          signal: AbortSignal.timeout(120_000), // 2 min per answer
+          signal: AbortSignal.timeout(120_000),
         });
         if (!r.ok) throw new Error(`Brain service error: ${r.status}`);
         return r.json();
@@ -219,7 +213,6 @@ app.post('/api/clone-voice', async (req, res) => {
 app.post('/api/clone-voice-youtube', async (req, res) => {
   const { youtubeUrl, characterName } = req.body;
 
-  // Validate YouTube URL
   if (!youtubeUrl || !/^https?:\/\/(www\.)?(youtube\.com\/watch|youtu\.be\/)/.test(youtubeUrl)) {
     return res.status(400).json({ error: 'Please provide a valid YouTube URL.' });
   }
@@ -229,18 +222,16 @@ app.post('/api/clone-voice-youtube', async (req, res) => {
 
   try {
     const { default: ytDlp } = await import('yt-dlp-exec');
-    // Download first 90 seconds of audio as MP3 via yt-dlp + ffmpeg
     await ytDlp(youtubeUrl, {
       output: `${base}.%(ext)s`,
       extractAudio: true,
       audioFormat: 'mp3',
-      audioQuality: '5',           // medium quality — enough for voice cloning
-      downloadSections: '*0-90',   // first 90 seconds only
+      audioQuality: '5',
+      downloadSections: '*0-90',
       noPlaylist: true,
       noCheckCertificates: true,
     });
 
-    // Find the downloaded file — yt-dlp replaces %(ext)s with the actual extension
     const stamp = base.split('/').at(-1);
     const files = await readdir(tmp);
     const audioFile = files.find((f) => f.startsWith(stamp ?? '') && f.endsWith('.mp3'));
@@ -259,7 +250,6 @@ app.post('/api/clone-voice-youtube', async (req, res) => {
     res.json({ voiceId: result.voiceId });
   } catch (error) {
     console.error('YouTube Voice Clone Error:', error);
-    // Clean up any leftover temp files
     readdir(tmp)
       .then((files) => files
         .filter((f) => f.startsWith('mockrot-yt-'))
