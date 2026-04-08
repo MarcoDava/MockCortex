@@ -24,9 +24,20 @@ def run(cmd: str):
     return result.stdout
 
 
+_NUMPY_FLAG = "/tmp/mockcortex_numpy_fixed"
+
 print("Installing system dependencies...")
 run("apt-get install -y -q ffmpeg")
 print("Installing Python dependencies...")
+
+if not os.path.exists(_NUMPY_FLAG):
+    print("Pinning NumPy<2 (runtime restart required after this)...")
+    run("pip install -q --force-reinstall 'numpy<2.0'")
+    run("pip install -q --force-reinstall 'scipy' 'scikit-learn'")
+    open(_NUMPY_FLAG, "w").close()
+    print("\nNumPy pinned. Restarting runtime — re-run the cell in ~5 seconds.")
+    os.kill(os.getpid(), 9)
+
 run("pip install -q git+https://github.com/facebookresearch/tribev2.git")
 run("pip install -q fastapi uvicorn pyngrok nest_asyncio nilearn matplotlib")
 
@@ -223,6 +234,7 @@ async def health():
 with open("/content/brain_service_app.py", "w", encoding="utf-8") as handle:
     handle.write(SERVICE_CODE)
 
+import asyncio
 import nest_asyncio
 import uvicorn
 
@@ -242,4 +254,6 @@ module = importlib.util.module_from_spec(spec)
 sys.modules["brain_service_app"] = module
 spec.loader.exec_module(module)
 
-uvicorn.run(module.app, host="0.0.0.0", port=8000, log_level="warning")
+config = uvicorn.Config(module.app, host="0.0.0.0", port=8000, log_level="warning")
+server = uvicorn.Server(config)
+asyncio.get_event_loop().run_until_complete(server.serve())

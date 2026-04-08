@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { clonedVoiceKey } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
 import { apiFetch } from "@/lib/api";
@@ -27,7 +28,7 @@ type Interviewer = typeof INTERVIEWERS[0];
 const loadClonedVoices = (): Record<string, string> => {
   const result: Record<string, string> = {};
   for (const char of INTERVIEWERS) {
-    const stored = localStorage.getItem(`clonedVoice_${char.key}`);
+    const stored = localStorage.getItem(clonedVoiceKey(char.key));
     if (stored) result[char.key] = stored;
   }
   return result;
@@ -83,7 +84,7 @@ const CharactersPage = () => {
         throw new Error(data.error ?? "Clone failed");
       }
       const data = (await res.json()) as { voiceId: string };
-      localStorage.setItem(`clonedVoice_${char.key}`, data.voiceId);
+      localStorage.setItem(clonedVoiceKey(char.key), data.voiceId);
       setClonedVoices((prev) => ({ ...prev, [char.key]: data.voiceId }));
       setYtUrls((prev) => ({ ...prev, [char.key]: "" }));
     } catch (e) {
@@ -112,7 +113,7 @@ const CharactersPage = () => {
         });
         if (!res.ok) throw new Error("Clone failed");
         const data = (await res.json()) as { voiceId: string };
-        localStorage.setItem(`clonedVoice_${char.key}`, data.voiceId);
+        localStorage.setItem(clonedVoiceKey(char.key), data.voiceId);
         setClonedVoices((prev) => ({ ...prev, [char.key]: data.voiceId }));
       } catch {
         setCloneError(`Failed to clone ${char.name}'s voice. Try a different audio file.`);

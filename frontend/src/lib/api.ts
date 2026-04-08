@@ -13,6 +13,11 @@ const ACTIONS_REQUIRING_PROOF: Record<string, string> = {
 };
 
 let bootstrapPromise: Promise<void> | null = null;
+let authTokenProvider: null | (() => Promise<string | null>) = null;
+
+export function registerApiAuthTokenProvider(provider: (() => Promise<string | null>) | null) {
+  authTokenProvider = provider;
+}
 
 async function sha256Hex(input: string) {
   const data = new TextEncoder().encode(input);
@@ -102,6 +107,12 @@ export async function apiFetch(input: string, init: RequestInit = {}) {
 
   const request = async () => {
     const headers = new Headers(init.headers ?? {});
+    if (authTokenProvider) {
+      const token = await authTokenProvider();
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+    }
     if (action) {
       const proofHeaders = await getRequestProofHeaders(action);
       for (const [key, value] of Object.entries(proofHeaders)) {

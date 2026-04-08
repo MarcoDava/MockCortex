@@ -15,6 +15,8 @@ app.set('trust proxy', 1);
 
 const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
 const hasElevenLabsKey = Boolean(process.env.ELEVENLABS_API_KEY?.trim());
+const convexDeploymentUrl = process.env.CONVEX_URL?.trim() || process.env.VITE_CONVEX_URL?.trim() || '';
+const hasConvexConfig = Boolean(convexDeploymentUrl);
 const hasBrainServiceConfig = Boolean(
   process.env.BRAIN_SERVICE_URL?.trim() && process.env.BRAIN_SERVICE_API_KEY?.trim()
 );
@@ -101,11 +103,13 @@ function corsOriginValidator(origin, callback) {
 }
 
 function getRequestIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.trim()) {
-    return forwarded.split(',')[0].trim();
+  if (typeof req.ip === 'string' && req.ip.trim()) {
+    return req.ip.trim();
   }
-  return req.ip || 'unknown';
+  if (typeof req.socket?.remoteAddress === 'string' && req.socket.remoteAddress.trim()) {
+    return req.socket.remoteAddress.trim();
+  }
+  return 'unknown';
 }
 
 function isSecureRequest(req) {
@@ -411,6 +415,101 @@ function assertAnonymousApiSession(req, res, next) {
   next();
 }
 
+function getBearerToken(req) {
+  const authorization = req.get('authorization')?.trim() ?? '';
+  if (!authorization.startsWith('Bearer ')) {
+    return '';
+  }
+  return authorization.slice('Bearer '.length).trim();
+}
+
+async function callConvexFunction({ token, type, path, args = {} }) {
+  if (!hasConvexConfig) {
+    throw new Error('Convex is not configured');
+  }
+
+  const response = await fetch(`${convexDeploymentUrl}/api/${type}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      path,
+      format: 'convex_encoded_json',
+      args: [args],
+    }),
+  });
+
+  if (!response.ok && response.status !== 560) {
+    throw new Error(await response.text());
+  }
+
+  const payload = await response.json();
+  if (payload.status === 'success') {
+    return payload.value;
+  }
+
+  throw new Error(payload.errorMessage || 'Convex request failed');
+}
+
+async function fetchCurrentUserFromConvex(token) {
+  const currentUser = await callConvexFunction({
+    token,
+    type: 'query',
+    path: 'users:currentUser',
+    args: {},
+  });
+  if (currentUser) {
+    return currentUser;
+  }
+
+  return callConvexFunction({
+    token,
+    type: 'mutation',
+    path: 'users:upsertCurrentUser',
+    args: {},
+  });
+}
+
+function requireAuthenticatedAppUser(req, res, next) {
+  if (!hasConvexConfig) {
+    res.status(503).json({ error: 'Server misconfigured: CONVEX_URL is missing' });
+    return;
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+  fetchCurrentUserFromConvex(token)
+    .then((user) => {
+      if (!user) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      req.authToken = token;
+      req.currentUser = user;
+      next();
+    })
+    .catch((error) => {
+      console.error('Auth validation error:', error);
+      res.status(401).json({ error: 'Authentication required' });
+    });
+}
+
+async function consumeInterviewEntitlement(token) {
+  return callConvexFunction({
+    token,
+    type: 'mutation',
+    path: 'users:consumeFreeInterview',
+    args: {},
+  });
+}
+
 app.use(addSecurityHeaders);
 app.use(cors({ origin: corsOriginValidator, methods: ['GET', 'POST', 'OPTIONS'], credentials: true }));
 app.use(express.json({ limit: '12mb' }));
@@ -521,7 +620,7 @@ app.get('/api/request-proof', requestProofLimiter, (req, res) => {
   });
 });
 
-app.post('/api/ask-question', defaultLimiter, requireRequestProof('ask-question'), async (req, res) => {
+app.post('/api/ask-question', defaultLimiter, requireAuthenticatedAppUser, requireRequestProof('ask-question'), async (req, res) => {
   if (!elevenlabs) {
     return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
   }
@@ -548,7 +647,7 @@ app.post('/api/ask-question', defaultLimiter, requireRequestProof('ask-question'
   }
 });
 
-app.post('/api/parse-resume', expensiveLimiter, requireRequestProof('parse-resume'), async (req, res) => {
+app.post('/api/parse-resume', expensiveLimiter, requireAuthenticatedAppUser, requireRequestProof('parse-resume'), async (req, res) => {
   if (!genAI) {
     return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
   }
@@ -578,7 +677,7 @@ app.post('/api/parse-resume', expensiveLimiter, requireRequestProof('parse-resum
   }
 });
 
-app.post('/api/generate-questions', expensiveLimiter, requireRequestProof('generate-questions'), async (req, res) => {
+app.post('/api/generate-questions', expensiveLimiter, requireAuthenticatedAppUser, requireRequestProof('generate-questions'), async (req, res) => {
   if (!genAI) {
     return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
   }
@@ -594,6 +693,7 @@ app.post('/api/generate-questions', expensiveLimiter, requireRequestProof('gener
     : '';
 
   try {
+    await consumeInterviewEntitlement(req.authToken);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const prompt = `You are a calm, professional interview coach conducting a realistic job interview.${resumeContext}
 
@@ -620,12 +720,15 @@ Keep language professional, concise, and supportive. Return ONLY JSON: [{"questi
       })),
     });
   } catch (error) {
+    if (error instanceof Error && /free interview|profile not found/i.test(error.message)) {
+      return res.status(403).json({ error: error.message });
+    }
     console.error('Question Gen Error:', error);
     res.status(500).json({ error: 'Failed to generate questions' });
   }
 });
 
-app.post('/api/get-feedback', expensiveLimiter, requireRequestProof('get-feedback'), async (req, res) => {
+app.post('/api/get-feedback', expensiveLimiter, requireAuthenticatedAppUser, requireRequestProof('get-feedback'), async (req, res) => {
   if (!genAI) {
     return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
   }
@@ -659,7 +762,7 @@ app.post('/api/get-feedback', expensiveLimiter, requireRequestProof('get-feedbac
   }
 });
 
-app.post('/api/neural-engagement', expensiveLimiter, requireRequestProof('neural-engagement'), async (req, res) => {
+app.post('/api/neural-engagement', expensiveLimiter, requireAuthenticatedAppUser, requireRequestProof('neural-engagement'), async (req, res) => {
   if (!hasBrainServiceConfig) {
     return res.json({ available: false, pending: true, results: null });
   }
@@ -712,7 +815,7 @@ app.post('/api/neural-engagement', expensiveLimiter, requireRequestProof('neural
   }
 });
 
-app.post('/api/clone-voice', cloneLimiter, requireRequestProof('clone-voice'), async (req, res) => {
+app.post('/api/clone-voice', cloneLimiter, requireAuthenticatedAppUser, requireRequestProof('clone-voice'), async (req, res) => {
   if (!elevenlabs) {
     return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
   }
@@ -741,7 +844,7 @@ app.post('/api/clone-voice', cloneLimiter, requireRequestProof('clone-voice'), a
   }
 });
 
-app.post('/api/clone-voice-youtube', cloneLimiter, requireRequestProof('clone-voice-youtube'), async (req, res) => {
+app.post('/api/clone-voice-youtube', cloneLimiter, requireAuthenticatedAppUser, requireRequestProof('clone-voice-youtube'), async (req, res) => {
   if (!elevenlabs) {
     return res.status(503).json({ error: 'Server misconfigured: ELEVENLABS_API_KEY is missing' });
   }

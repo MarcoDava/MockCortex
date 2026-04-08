@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { apiFetch } from "@/lib/api";
-import { convexConsumeFreeInterview, convexCurrentUser } from "@/lib/convexFunctions";
+import { parseLocalStorageJson, clonedVoiceKey } from "@/lib/utils";
+import { convexCurrentUser } from "@/lib/convexFunctions";
 import type { Character, ResumeSummary } from "@/types";
 import { INTERVIEWERS } from "@/Pages/CharactersPage/CharactersPage";
 
@@ -10,39 +11,24 @@ const JobDescriptionPage = () => {
   const [text, setText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resume, setResume] = useState<ResumeSummary | null>(() => {
-    try {
-      const saved = localStorage.getItem("resumeSummary");
-      return saved ? (JSON.parse(saved) as ResumeSummary) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [resume, setResume] = useState<ResumeSummary | null>(() => parseLocalStorageJson<ResumeSummary>("resumeSummary"));
   const [resumeFileName, setResumeFileName] = useState<string | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const currentUser = useQuery(convexCurrentUser, {});
-  const consumeFreeInterview = useMutation(convexConsumeFreeInterview);
 
   const [voiceKey, setVoiceKey] = useState<string>(() => {
     return localStorage.getItem("selectedInterviewerKey") ?? "jon";
   });
 
-  const character = (() => {
-    try {
-      const raw = localStorage.getItem("selectedCharacter");
-      return raw ? (JSON.parse(raw) as Character) : null;
-    } catch {
-      return null;
-    }
-  })();
+  const character = parseLocalStorageJson<Character>("selectedCharacter");
 
   const getVoiceId = (key: string) => {
     const preset = INTERVIEWERS.find((i) => i.key === key);
     if (!preset) return "";
-    return localStorage.getItem(`clonedVoice_${key}`) ?? preset.id;
+    return localStorage.getItem(clonedVoiceKey(key)) ?? preset.id;
   };
 
   const switchVoice = (key: string) => {
@@ -127,7 +113,6 @@ const JobDescriptionPage = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await consumeFreeInterview({});
       const resumeSummary = resume ?? undefined;
       const response = await apiFetch("/api/generate-questions", {
         method: "POST",
@@ -204,7 +189,7 @@ const JobDescriptionPage = () => {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {INTERVIEWERS.map((voice) => {
                   const selected = voiceKey === voice.key;
-                  const hasClone = Boolean(localStorage.getItem(`clonedVoice_${voice.key}`));
+                  const hasClone = Boolean(localStorage.getItem(clonedVoiceKey(voice.key)));
                   return (
                     <button
                       key={voice.key}

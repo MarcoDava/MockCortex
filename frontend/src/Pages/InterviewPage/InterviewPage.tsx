@@ -272,14 +272,12 @@ const InterviewPage = () => {
           setPhase("silent");
         }
       }, 1000);
-    } else {
+    }
+    return () => {
       if (silenceIntervalRef.current) {
         clearInterval(silenceIntervalRef.current);
         silenceIntervalRef.current = null;
       }
-    }
-    return () => {
-      if (silenceIntervalRef.current) clearInterval(silenceIntervalRef.current);
     };
   }, [phase, stopEmotionTracking]);
 
@@ -295,8 +293,10 @@ const InterviewPage = () => {
         });
         if (!res.ok) throw new Error("Audio fetch failed");
         const blob = await res.blob();
-        const audio = new Audio(URL.createObjectURL(blob));
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
         audio.onended = () => {
+          URL.revokeObjectURL(url);
           setIsSpeaking(false);
           setPhase("countdown");
         };
@@ -316,30 +316,7 @@ const InterviewPage = () => {
     }
   }, [currentIdx, phase, questions, playAIQuestion]);
 
-  // 3-second countdown before recording
-  useEffect(() => {
-    if (phase === "countdown") {
-      if (countdown > 0) {
-        const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
-        return () => clearTimeout(id);
-      } else {
-        setPhase("recording");
-        startRecording();
-      }
-    }
-  }, [phase, countdown]);
-
-  // 2-minute recording timer
-  useEffect(() => {
-    if (phase === "recording" && timer > 0) {
-      const id = setTimeout(() => setTimer((t) => t - 1), 1000);
-      return () => clearTimeout(id);
-    } else if (phase === "recording" && timer === 0) {
-      void handleNext();
-    }
-  }, [phase, timer]);
-
-  const startRecording = () => {
+  const startRecording = useCallback(() => {
     const SR = (window as Window & { webkitSpeechRecognition?: new () => SpeechRecognitionInstance }).webkitSpeechRecognition;
     if (!SR) return;
     const rec = new SR();
@@ -361,7 +338,30 @@ const InterviewPage = () => {
     startVideoRecorder();
     startEmotionTracking();
     rec.start();
-  };
+  }, [startAudioRecorder, startVideoRecorder, startEmotionTracking]);
+
+  // 3-second countdown before recording
+  useEffect(() => {
+    if (phase === "countdown") {
+      if (countdown > 0) {
+        const id = setTimeout(() => setCountdown((c) => c - 1), 1000);
+        return () => clearTimeout(id);
+      } else {
+        setPhase("recording");
+        startRecording();
+      }
+    }
+  }, [phase, countdown, startRecording]);
+
+  // 2-minute recording timer
+  useEffect(() => {
+    if (phase === "recording" && timer > 0) {
+      const id = setTimeout(() => setTimer((t) => t - 1), 1000);
+      return () => clearTimeout(id);
+    } else if (phase === "recording" && timer === 0) {
+      void handleNext();
+    }
+  }, [phase, timer]);
 
   const finalizeAnswer = useCallback(async (): Promise<SessionResult> => {
     recognitionRef.current?.stop();

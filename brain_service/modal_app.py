@@ -83,7 +83,7 @@ def serve():
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import numpy as np
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, Header, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel
 
@@ -122,12 +122,18 @@ def serve():
         yield
 
     fastapi_app = FastAPI(title="MockCortex Brain Service", lifespan=lifespan)
-    fastapi_app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["POST", "GET"],
-        allow_headers=["*"],
-    )
+    allowed_origins = [
+        origin.strip()
+        for origin in os.environ.get("BRAIN_SERVICE_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    if allowed_origins:
+        fastapi_app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allowed_origins,
+            allow_methods=["POST", "GET"],
+            allow_headers=["Content-Type", "X-Brain-Service-Api-Key"],
+        )
 
     class AnalyzeRequest(BaseModel):
         text: str
@@ -144,6 +150,13 @@ def serve():
         score: int
         brainImageBase64: str
         regions: list[BrainRegion]
+
+    def _require_api_key(x_brain_service_api_key: str | None):
+        expected = os.environ.get("BRAIN_SERVICE_API_KEY", "").strip()
+        if not expected:
+            raise HTTPException(status_code=503, detail="Brain service API key is not configured")
+        if x_brain_service_api_key != expected:
+            raise HTTPException(status_code=401, detail="Invalid brain service API key")
 
     def _compute_score(preds: np.ndarray) -> int:
         mean_act = np.mean(np.abs(preds), axis=0)
@@ -197,7 +210,11 @@ def serve():
         return base64.b64encode(buf.read()).decode()
 
     @fastapi_app.post("/analyze", response_model=AnalyzeResponse)
-    async def analyze(req: AnalyzeRequest):
+    async def analyze(
+        req: AnalyzeRequest,
+        x_brain_service_api_key: str | None = Header(default=None),
+    ):
+        _require_api_key(x_brain_service_api_key)
         if not req.text.strip():
             raise HTTPException(status_code=400, detail="text must not be empty")
         with tempfile.NamedTemporaryFile(

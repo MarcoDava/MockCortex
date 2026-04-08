@@ -12,6 +12,8 @@ services:
         sync: false
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: CONVEX_URL
+        sync: false
       - key: ADDITIONAL_ALLOWED_ORIGINS
         sync: false
       - key: SESSION_SIGNING_SECRET

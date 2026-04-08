@@ -48,7 +48,9 @@ export default defineSchema({
     // Optional extra context stored alongside feedback
     questions: v.optional(v.array(v.string())),
     interviewerName: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
   })
     .index("by_tokenIdentifier", ["tokenIdentifier"])
-    .index("by_lastAccessedAt", ["lastAccessedAt"]),
+    .index("by_lastAccessedAt", ["lastAccessedAt"])
+    .index("by_session", ["sessionId"]),
 });

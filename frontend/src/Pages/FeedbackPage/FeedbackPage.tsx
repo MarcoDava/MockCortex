@@ -4,7 +4,8 @@ import { motion } from "motion/react";
 import { useMutation } from "convex/react";
 import { apiFetch } from "@/lib/api";
 import { convexAddInterview } from "@/lib/convexFunctions";
-import { getVideoBlob } from "@/lib/videoStore";
+import { getVideoBlob, clearVideoStore } from "@/lib/videoStore";
+import { parseLocalStorageJson } from "@/lib/utils";
 import type { Feedback, NeuralEngagementResponse, NeuralResult, SessionResult } from "@/types";
 
 const scoreBadgeClass = (score: number) => {
@@ -37,6 +38,10 @@ const FeedbackPage = () => {
   const [neuralResults, setNeuralResults] = useState<NeuralResult[] | null>(null);
   const [neuralInterpretation, setNeuralInterpretation] = useState<string>("");
   const addInterview = useMutation(convexAddInterview);
+
+  useEffect(() => {
+    return () => { clearVideoStore(); };
+  }, []);
 
   const runNeuralAnalysisFor = async (sessions: SessionResult[]) => {
     const transcripts = sessions.map((s) => s.answer).filter(Boolean);
@@ -71,23 +76,10 @@ const FeedbackPage = () => {
       );
       setSessionResults(sessionData);
       const voiceId = localStorage.getItem("selectedVoiceId") ?? "";
-      const character = (() => {
-        try {
-          return JSON.parse(localStorage.getItem("selectedCharacter") ?? "null") as { name?: string } | null;
-        } catch {
-          return null;
-        }
-      })();
+      const character = parseLocalStorageJson<{ name?: string }>("selectedCharacter");
 
       try {
-        const resumeSummary = (() => {
-          try {
-            const raw = localStorage.getItem("resumeSummary");
-            return raw ? JSON.parse(raw) : undefined;
-          } catch {
-            return undefined;
-          }
-        })();
+        const resumeSummary = parseLocalStorageJson("resumeSummary") ?? undefined;
         const res = await apiFetch(`/api/get-feedback`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -99,15 +91,10 @@ const FeedbackPage = () => {
         setFeedbacks(fb);
         setVideoUrls(sessionData.map((_, i) => getVideoBlob(i)));
 
-        const avgScore =
-          fb.length > 0
-            ? Math.round(fb.reduce((sum, item) => sum + item.score, 0) / fb.length)
-            : 0;
-
         const entry = {
           date: new Date().toLocaleString(),
           jobTitle: "Interview Session",
-          avgScore,
+          avgScore: fb.length > 0 ? Math.round(fb.reduce((sum, item) => sum + item.score, 0) / fb.length) : 0,
           lastAccessedAt: Date.now(),
           feedback: fb,
           answers: sessionData,
@@ -137,7 +124,9 @@ const FeedbackPage = () => {
         body: JSON.stringify({ question: text, voiceId }),
       });
       if (!res.ok) return;
-      const audio = new Audio(URL.createObjectURL(await res.blob()));
+      const url = URL.createObjectURL(await res.blob());
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
       audio.play();
     } catch {
       // Non-fatal
@@ -342,7 +331,7 @@ const FeedbackCard = ({
               {dominantEmotions.length > 0 && (
                 <div className="flex gap-2 flex-wrap">
                   {dominantEmotions.map((emotion) => (
-                    <span key={emotion} className="text-xs bg-gray-800 border border-gray-700 text-gray-300 px-2 py-0.5 rounded-full">
+                    <span key={emotion} className="text-xs bg-white/5 border border-white/10 text-gray-400 px-2.5 py-1 rounded-full">
                       {EMOTION_EMOJI[emotion] ?? "?"} {emotion}
                     </span>
                   ))}
@@ -350,9 +339,10 @@ const FeedbackCard = ({
               )}
               <button
                 onClick={() => onSpeakFeedback(feedback.critique)}
-                className="text-blue-400 text-sm hover:text-blue-300 transition-colors underline underline-offset-2"
+                className="text-xs text-violet-400 hover:text-violet-300 font-medium flex items-center gap-1.5 transition-colors"
               >
-                Hear Feedback
+                <span className="w-3.5 h-3.5 rounded-full border border-violet-400/60 flex items-center justify-center text-[8px]">{">"}</span>
+                Hear feedback
               </button>
             </div>
           </div>
