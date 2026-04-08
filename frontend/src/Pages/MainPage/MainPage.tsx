@@ -3,10 +3,10 @@ import { motion } from "motion/react";
 import { INTERVIEWERS } from "../CharactersPage/CharactersPage";
 
 const steps = [
-  { icon: "🎙️", label: "Choose a voice", desc: "Start with Adam or Rachel, or clone your own" },
-  { icon: "📄", label: "Paste the JD", desc: "Add the role description and optional resume" },
-  { icon: "🎧", label: "Record answers", desc: "Each answer is saved with audio + emotion timeline" },
-  { icon: "🧠", label: "Review insights", desc: "AI feedback plus optional TRIBE v2 brain analysis" },
+  { num: "01", label: "Choose your voice", desc: "Pick Jon or Hope as your interviewer. Upload an MP3 or YouTube link to clone any voice." },
+  { num: "02", label: "Paste the job description", desc: "Add the role description and optionally upload your resume for tailored questions." },
+  { num: "03", label: "Answer out loud", desc: "2 minutes per question. Your webcam, transcript, and facial expressions are captured live." },
+  { num: "04", label: "Get scored feedback", desc: "Gemini grades each answer 0–10 with critique. Optional neural brain map via TRIBE v2." },
 ];
 
 const HomePage = () => {
@@ -21,14 +21,13 @@ const HomePage = () => {
       >
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-300 text-sm font-medium">
           <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
-          MockCortex | Professional AI Interview Practice
+          Built for Macathon 2026
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-none text-white">
-          Practice interviews
-          <br />
+        <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-[1.05] text-white">
+          Practice interviews<br />
           <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-rose-400 bg-clip-text text-transparent">
-            with voice-guided coaching
+            that actually help
           </span>
         </h1>
 
@@ -85,20 +84,22 @@ const HomePage = () => {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.35, ease: "easeOut" }}
-        className="mt-20 w-full max-w-3xl"
+        className="mt-16 w-full max-w-2xl"
       >
         <p className="text-center text-gray-500 text-sm font-medium uppercase tracking-widest mb-8">
           How it works
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="space-y-3">
           {steps.map((step, i) => (
             <div
               key={i}
-              className="flex flex-col items-center text-center gap-3 p-5 rounded-2xl bg-white/5 border border-white/8"
+              className="flex items-start gap-5 p-5 rounded-2xl bg-white/4 border border-white/8 hover:border-white/12 transition-colors"
             >
-              <span className="text-3xl">{step.icon}</span>
-              <p className="text-white text-sm font-semibold">{step.label}</p>
-              <p className="text-gray-500 text-xs leading-relaxed">{step.desc}</p>
+              <span className="text-xs font-bold tabular-nums text-violet-400/70 mt-0.5 w-6 shrink-0">{step.num}</span>
+              <div>
+                <p className="text-white text-sm font-semibold leading-snug">{step.label}</p>
+                <p className="text-gray-500 text-xs leading-relaxed mt-1">{step.desc}</p>
+              </div>
             </div>
           ))}
         </div>

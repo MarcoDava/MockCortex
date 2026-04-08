@@ -81,6 +81,11 @@ class AnalyzeRequest(BaseModel):
     text: str
 
 
+class AnalyzeAudioRequest(BaseModel):
+    audioBase64: str
+    mimeType: str = "audio/webm"
+
+
 class BrainRegion(BaseModel):
     name: str
     activation: float
@@ -213,6 +218,67 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
         )
     finally:
         Path(txt_path).unlink(missing_ok=True)
+
+
+@app.post("/analyze-audio", response_model=AnalyzeResponse)
+async def analyze_audio(req: AnalyzeAudioRequest) -> AnalyzeResponse:
+    if not req.audioBase64.strip():
+        raise HTTPException(status_code=400, detail="audioBase64 must not be empty")
+
+    import base64
+    import subprocess
+
+    audio_bytes = base64.b64decode(req.audioBase64)
+
+    # Determine original extension from MIME type
+    ext_map = {
+        "audio/webm": ".webm",
+        "audio/webm;codecs=opus": ".webm",
+        "audio/ogg": ".ogg",
+        "audio/mp4": ".mp4",
+        "audio/mpeg": ".mp3",
+        "audio/wav": ".wav",
+    }
+    mime_clean = req.mimeType.split(";")[0].strip().lower()
+    orig_ext = ext_map.get(mime_clean, ".webm")
+
+    with tempfile.NamedTemporaryFile(suffix=orig_ext, delete=False) as f:
+        f.write(audio_bytes)
+        raw_path = f.name
+
+    # whisperx requires wav — convert via ffmpeg
+    wav_path = raw_path.replace(orig_ext, ".wav")
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", raw_path, "-ar", "16000", "-ac", "1", wav_path],
+            capture_output=True,
+            check=True,
+        )
+        logger.info("Converted audio to wav: %s", wav_path)
+    except subprocess.CalledProcessError as e:
+        Path(raw_path).unlink(missing_ok=True)
+        logger.error("ffmpeg conversion failed: %s", e.stderr.decode())
+        raise HTTPException(status_code=422, detail="Audio conversion failed")
+    finally:
+        Path(raw_path).unlink(missing_ok=True)
+
+    try:
+        logger.info("Running TRIBE v2 on audio file…")
+        events = _model.get_events_dataframe(audio_path=wav_path)
+        preds, _ = _model.predict(events, verbose=False)
+        logger.info("Predictions shape: %s", preds.shape)
+
+        score = _compute_engagement_score(preds)
+        regions = _get_top_regions(preds)
+        brain_img = _generate_brain_image(preds)
+
+        return AnalyzeResponse(
+            score=score,
+            brainImageBase64=brain_img,
+            regions=regions,
+        )
+    finally:
+        Path(wav_path).unlink(missing_ok=True)
 
 
 @app.get("/health")

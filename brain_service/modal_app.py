@@ -26,6 +26,8 @@ import modal
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install([
+        "git",               # needed for pip install from GitHub
+        "ffmpeg",            # whisperx audio decoding
         "libgl1-mesa-glx",   # matplotlib 3D rendering
         "libglib2.0-0",
         "libgomp1",          # OpenMP (numpy / nilearn)
@@ -38,10 +40,15 @@ image = (
         "matplotlib",
         "huggingface_hub",
         "pydantic",
+        "whisperx",          # tribev2 calls whisperx internally for transcription
     ])
     # TRIBE v2 installed separately — large git install
     .pip_install(["git+https://github.com/facebookresearch/tribev2.git"])
-    .env({"MPLBACKEND": "Agg"})
+    .env({
+        "MPLBACKEND": "Agg",
+        # Ensure ffmpeg is findable by all subprocesses (including uv-spawned ones)
+        "PATH": "/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin",
+    })
 )
 
 # Persistent volume — caches downloaded model weights across cold starts
@@ -59,9 +66,10 @@ app = modal.App("mockcortex-brain-service")
     secrets=[modal.Secret.from_name("huggingface-secret")],
     volumes={"/model-cache": model_cache},
     timeout=360,                  # 6 min max per request
-    container_idle_timeout=300,   # keep container warm 5 min after last request
-    allow_concurrent_inputs=1,    # one analysis at a time per container
+    scaledown_window=300,         # keep container warm 5 min after last request
+    min_containers=1,             # always keep 1 container ready — remove after hackathon to save $
 )
+@modal.concurrent(max_inputs=1)
 @modal.asgi_app()
 def serve():
     import io
@@ -123,6 +131,10 @@ def serve():
 
     class AnalyzeRequest(BaseModel):
         text: str
+
+    class AnalyzeAudioRequest(BaseModel):
+        audioBase64: str
+        mimeType: str = "audio/webm"
 
     class BrainRegion(BaseModel):
         name: str

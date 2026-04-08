@@ -11,7 +11,7 @@ export const INTERVIEWERS = [
     img: "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800",
     description: "Confident male interviewer with a clear and steady delivery.",
     tag: "Male Voice",
-    tagColor: "text-cyan-300 bg-cyan-500/10 border-cyan-500/20",
+    tagColor: "text-violet-300 bg-violet-500/10 border-violet-500/20",
   },
   {
     id: "zGjIP4SZlMnY9m93k97r",
@@ -20,7 +20,7 @@ export const INTERVIEWERS = [
     img: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=800",
     description: "Warm female interviewer voice tuned for clarity and calm pacing.",
     tag: "Female Voice",
-    tagColor: "text-amber-300 bg-amber-500/10 border-amber-500/20",
+    tagColor: "text-purple-300 bg-purple-500/10 border-purple-500/20",
   },
 ];
 
@@ -135,14 +135,14 @@ const CharactersPage = () => {
       >
         {/* Header */}
         <div className="text-center mb-12 space-y-3">
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-[1.1]">
             Choose your{" "}
             <span className="bg-gradient-to-r from-violet-400 to-rose-400 bg-clip-text text-transparent">
               interviewer voice
             </span>
           </h1>
           <p className="text-gray-400 text-base max-w-md mx-auto">
-            Start with Jon or Hope. You can upload custom samples or use a YouTube clip for voice cloning.
+            Click a card to select. Optionally upload an MP3 or paste a YouTube link to clone any voice.
           </p>
         </div>
 
@@ -153,7 +153,7 @@ const CharactersPage = () => {
         )}
 
         {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
           {INTERVIEWERS.map((char, i) => {
             const isCloning = cloningKey === char.key;
             const hasClone = Boolean(clonedVoices[char.key]);
@@ -239,7 +239,7 @@ const CharactersPage = () => {
                     <button
                       onClick={() => handleYouTubeClone(char)}
                       disabled={isCloning || !ytUrls[char.key]?.trim()}
-                      className="shrink-0 px-3 py-1.5 rounded-xl bg-red-600/80 hover:bg-red-500 text-white text-xs font-semibold transition-colors disabled:opacity-40 cursor-pointer"
+                      className="shrink-0 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors disabled:opacity-40 cursor-pointer"
                     >
                       {isCloning ? (
                         <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />

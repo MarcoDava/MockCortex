@@ -5,9 +5,10 @@ import { convexGetBySession, convexTouchSession } from "@/lib/convexFunctions";
 import type { InterviewSession } from "@/types";
 
 const scoreBadgeClass = (score: number) => {
-  if (score >= 7) return "bg-green-600 text-white";
-  if (score >= 4) return "bg-yellow-500 text-black";
-  return "bg-red-600 text-white";
+  if (score >= 8) return "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300";
+  if (score >= 6) return "bg-green-500/12 border border-green-500/25 text-green-400";
+  if (score >= 4) return "bg-amber-500/12 border border-amber-500/25 text-amber-300";
+  return "bg-red-500/12 border border-red-500/25 text-red-400";
 };
 
 const PastInterviewsPage = () => {
@@ -16,10 +17,8 @@ const PastInterviewsPage = () => {
   const sessionId = localStorage.getItem("mockcortex_session_id") ?? "";
   const touchSession = useMutation(convexTouchSession);
 
-  // Convex real-time query — returns undefined while loading, null if not connected
   const convexHistory = useQuery(convexGetBySession, { sessionId });
 
-  // localStorage fallback for when Convex is not configured
   const [localHistory, setLocalHistory] = useState<InterviewSession[]>([]);
   useEffect(() => {
     const saved = localStorage.getItem("interviewHistory");
@@ -31,18 +30,18 @@ const PastInterviewsPage = () => {
     void touchSession({ sessionId });
   }, [sessionId, touchSession]);
 
-  // Use Convex data when available, otherwise fall back to localStorage
   const history: InterviewSession[] =
-    convexHistory != null
-      ? (convexHistory as InterviewSession[])
-      : localHistory;
+    convexHistory != null ? (convexHistory as InterviewSession[]) : localHistory;
 
   const isLoading = convexHistory === undefined;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen gap-3 text-white">
-        <span className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="relative w-8 h-8">
+          <div className="absolute inset-0 rounded-full border-2 border-white/8" />
+          <div className="absolute inset-0 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+        </div>
         <p className="text-gray-400">Loading history…</p>
       </div>
     );
@@ -50,17 +49,25 @@ const PastInterviewsPage = () => {
 
   if (history.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-6">
-        <p className="text-5xl">📋</p>
-        <h2 className="text-2xl font-bold text-white">No interviews yet</h2>
-        <p className="text-gray-400 text-sm">
-          Complete your first interview to see results here.
-        </p>
+      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 text-center px-6 pointer-events-auto">
+        <div className="relative w-24 h-24">
+          <div className="absolute inset-0 rounded-3xl bg-violet-600/10 border border-violet-500/20" />
+          <div className="absolute inset-3 rounded-2xl bg-violet-600/15 border border-violet-500/25" />
+          <div className="absolute inset-6 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+            <span className="text-violet-400 text-xl font-light">+</span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-semibold text-white">No interviews yet</h2>
+          <p className="text-gray-500 text-sm max-w-xs leading-relaxed">
+            Your recordings, scores, and feedback will appear here after your first interview.
+          </p>
+        </div>
         <Link
           to="/characters"
-          className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-500 transition-colors"
+          className="px-6 py-2.5 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]"
         >
-          Start Interview
+          Start your first interview
         </Link>
       </div>
     );
@@ -68,34 +75,44 @@ const PastInterviewsPage = () => {
 
   return (
     <div className="min-h-screen p-6 pointer-events-auto">
-      <div className="max-w-3xl mx-auto space-y-4">
+      <div className="max-w-3xl mx-auto space-y-3">
         <h1 className="text-3xl font-bold text-white mb-8">Past Interviews</h1>
 
         {history.map((session, i) => (
-          <div key={i} className="rounded-xl border border-gray-700 bg-gray-900 overflow-hidden">
+          <div
+            key={i}
+            className="rounded-2xl border border-white/8 bg-white/4 overflow-hidden hover:border-white/14 transition-all duration-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+          >
             <button
               onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
-              className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/50 transition-colors text-left"
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/4 transition-colors text-left"
             >
               <div className="space-y-0.5">
-                <p className="text-blue-400 font-semibold text-sm">{session.date}</p>
-                <p className="text-gray-400 text-xs">{session.jobTitle}</p>
+                <p className="text-violet-400 font-medium text-sm">{session.date}</p>
+                <p className="text-gray-500 text-xs">{session.jobTitle}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-sm font-bold ${scoreBadgeClass(session.avgScore)}`}>
+                <span className={`px-3 py-1 rounded-full text-xs font-bold ${scoreBadgeClass(session.avgScore)}`}>
                   {session.avgScore}/10
                 </span>
-                <span className="text-gray-500 text-sm">{expandedIdx === i ? "▲" : "▼"}</span>
+                <svg
+                  className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${expandedIdx === i ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
             </button>
 
             {expandedIdx === i && session.feedback && session.feedback.length > 0 && (
-              <div className="border-t border-gray-700 divide-y divide-gray-800">
+              <div className="border-t border-white/6 divide-y divide-white/5">
                 {session.feedback.map((f, j) => (
-                  <div key={j} className="px-6 py-4 space-y-2">
+                  <div key={j} className="px-5 py-4 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs font-medium">Q{j + 1}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${scoreBadgeClass(f.score)}`}>
+                      <span className="text-gray-500 text-xs font-medium uppercase tracking-wide">Q{j + 1}</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${scoreBadgeClass(f.score)}`}>
                         {f.score}/10
                       </span>
                     </div>

@@ -24,6 +24,10 @@ def run(cmd: str):
         raise RuntimeError(f"Command failed: {cmd}")
     return result.stdout
 
+print("Installing system dependencies…")
+run("apt-get install -y -q ffmpeg")
+print("✅ ffmpeg installed.")
+
 print("Installing tribev2 and service dependencies…")
 run("pip install -q git+https://github.com/facebookresearch/tribev2.git")
 run("pip install -q fastapi uvicorn pyngrok nest_asyncio nilearn matplotlib")

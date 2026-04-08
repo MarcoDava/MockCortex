@@ -144,7 +144,7 @@ const JobDescriptionPage = () => {
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-700 bg-gray-800/50 p-4 space-y-3">
+        <div className="rounded-2xl border border-white/8 bg-white/4 p-4 space-y-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           <p className="text-gray-300 text-sm font-medium">Interviewer voice</p>
           <div className="grid grid-cols-2 gap-3">
             {INTERVIEWERS.map((voice) => {
@@ -157,8 +157,8 @@ const JobDescriptionPage = () => {
                   onClick={() => switchVoice(voice.key)}
                   className={`rounded-xl border px-4 py-3 text-left transition-colors ${
                     selected
-                      ? "border-blue-500 bg-blue-500/10"
-                      : "border-gray-700 bg-gray-900/40 hover:border-gray-500"
+                      ? "border-violet-500/60 bg-violet-600/10 shadow-[0_0_0_1px_rgba(139,92,246,0.25)]"
+                      : "border-white/8 bg-white/4 hover:border-white/16 hover:bg-white/6"
                   }`}
                 >
                   <p className="text-white text-sm font-semibold">{voice.name}</p>
@@ -171,7 +171,7 @@ const JobDescriptionPage = () => {
 
         {/* Interviewer confirmation */}
         {character ? (
-          <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-3 bg-white/4 border border-white/8 rounded-2xl px-4 py-3">
             <img
               src={character.img}
               alt={character.name}
@@ -220,11 +220,11 @@ const JobDescriptionPage = () => {
               />
               <label
                 htmlFor="resume-upload"
-                className="flex items-center justify-center gap-2 w-full border border-dashed border-gray-600 rounded-xl py-4 cursor-pointer hover:border-blue-500 hover:bg-blue-500/5 transition-colors text-gray-400 hover:text-blue-400 text-sm"
+                className="flex items-center justify-center gap-2 w-full border border-dashed border-white/12 rounded-2xl py-6 cursor-pointer hover:border-violet-500/40 hover:bg-violet-600/4 transition-all text-gray-500 hover:text-violet-300 text-sm"
               >
                 {resumeLoading ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
                     Parsing resume…
                   </>
                 ) : (
@@ -239,7 +239,7 @@ const JobDescriptionPage = () => {
               )}
             </div>
           ) : (
-            <div className="bg-green-900/20 border border-green-800 rounded-xl px-4 py-3 space-y-2">
+            <div className="bg-emerald-500/8 border border-emerald-500/25 rounded-2xl px-4 py-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-green-400 text-sm">✓</span>
                 <p className="text-green-400 text-sm font-medium">
@@ -252,7 +252,7 @@ const JobDescriptionPage = () => {
                   {resume.skills.slice(0, 6).map((s) => (
                     <span
                       key={s}
-                      className="text-xs bg-gray-800 border border-gray-700 text-gray-300 px-2 py-0.5 rounded-full"
+                      className="text-xs bg-white/5 border border-white/8 text-gray-300 px-2 py-0.5 rounded-full"
                     >
                       {s}
                     </span>
@@ -280,13 +280,13 @@ const JobDescriptionPage = () => {
             disabled={isLoading}
             rows={8}
             placeholder="Paste the full job description here (minimum 20 characters)…"
-            className="w-full resize-none rounded-xl bg-gray-800 border border-gray-700 text-white p-4 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 transition"
+            className="w-full resize-none rounded-2xl bg-white/4 border border-white/8 text-gray-100 p-4 placeholder:text-gray-600 focus:outline-none focus:border-violet-500/50 focus:bg-white/6 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.12)] disabled:opacity-50 transition-all duration-200"
           />
           <p className="text-gray-500 text-xs text-right">{text.trim().length} chars</p>
         </div>
 
         {/* Interview structure note */}
-        <div className="bg-gray-800/40 border border-gray-700 rounded-xl px-4 py-3 space-y-1">
+        <div className="bg-white/3 border border-white/6 rounded-2xl px-4 py-3 space-y-1">
           <p className="text-gray-300 text-xs font-medium">Interview structure (5 questions)</p>
           <div className="flex flex-wrap gap-2 mt-1">
             {[
@@ -314,7 +314,7 @@ const JobDescriptionPage = () => {
         <button
           onClick={startInterview}
           disabled={!isValid || isLoading || !character}
-          className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-violet-600 text-white font-semibold py-3.5 rounded-2xl hover:bg-violet-500 hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200"
         >
           {isLoading ? (
             <>

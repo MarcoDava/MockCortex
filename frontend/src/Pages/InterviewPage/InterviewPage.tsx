@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { useMutation } from "convex/react";
 import { API_BASE } from "@/lib/api";
 import { convexGenerateUploadUrl, convexGetFileUrl } from "@/lib/convexFunctions";
+import { storeVideoBlob } from "@/lib/videoStore";
 import type { Character, EmotionSample, Question, SessionResult } from "@/types";
 
 type Phase = "loading" | "speaking" | "countdown" | "recording" | "silent";
@@ -56,6 +58,8 @@ const InterviewPage = () => {
   const recordingStartRef = useRef<number>(0);
   const silenceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSpeechRef = useRef<number>(Date.now());
+  const videoChunksRef = useRef<Blob[]>([]);
+  const videoRecorderRef = useRef<MediaRecorder | null>(null);
 
   // Load character + questions from localStorage
   useEffect(() => {
@@ -217,6 +221,49 @@ const InterviewPage = () => {
     });
   }, []);
 
+  const startVideoRecorder = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream || !stream.getVideoTracks().length) return;
+    const candidates = [
+      "video/webm;codecs=vp9,opus",
+      "video/webm;codecs=vp8,opus",
+      "video/webm",
+      "video/mp4",
+    ];
+    const mimeType = candidates.find((t) => MediaRecorder.isTypeSupported(t));
+    try {
+      videoChunksRef.current = [];
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType, videoBitsPerSecond: 600_000 } : undefined
+      );
+      recorder.ondataavailable = (e: BlobEvent) => {
+        if (e.data.size > 0) videoChunksRef.current.push(e.data);
+      };
+      recorder.start(1000);
+      videoRecorderRef.current = recorder;
+    } catch {
+      // video recording unsupported — continue without it
+    }
+  }, []);
+
+  const stopVideoRecorder = useCallback((questionIndex: number): Promise<void> => {
+    const recorder = videoRecorderRef.current;
+    if (!recorder) return Promise.resolve();
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blob = videoChunksRef.current.length
+          ? new Blob(videoChunksRef.current, { type: recorder.mimeType || "video/webm" })
+          : null;
+        videoRecorderRef.current = null;
+        videoChunksRef.current = [];
+        if (blob) storeVideoBlob(questionIndex, URL.createObjectURL(blob));
+        resolve();
+      };
+      recorder.stop();
+    });
+  }, []);
+
   const uploadAnswerAudio = useCallback(
     async (blob: Blob): Promise<{ audioUrl?: string; audioStorageId?: string }> => {
       try {
@@ -339,6 +386,7 @@ const InterviewPage = () => {
     lastEmotionSampleRef.current = 0;
     setCurrentEmotion("neutral");
     startAudioRecorder();
+    startVideoRecorder();
     startEmotionTracking();
     rec.start();
   };
@@ -348,7 +396,10 @@ const InterviewPage = () => {
     stopEmotionTracking();
     clearInterval(silenceIntervalRef.current!);
 
-    const blob = await stopAudioRecorder();
+    const [blob] = await Promise.all([
+      stopAudioRecorder(),
+      stopVideoRecorder(currentIdx),
+    ]);
     const uploadMeta = blob ? await uploadAnswerAudio(blob) : {};
 
     return {
@@ -357,7 +408,7 @@ const InterviewPage = () => {
       ...uploadMeta,
       emotionTimeline: answerTimelineRef.current,
     };
-  }, [currentIdx, questions, stopAudioRecorder, stopEmotionTracking, transcript, uploadAnswerAudio]);
+  }, [currentIdx, questions, stopAudioRecorder, stopVideoRecorder, stopEmotionTracking, transcript, uploadAnswerAudio]);
 
   const handleNext = useCallback(async () => {
     if (isSubmitting) return;
@@ -453,76 +504,150 @@ const InterviewPage = () => {
           </div>
         </div>
 
-        {/* Phase UI */}
-        {phase === "speaking" && (
-          <p className="text-center animate-pulse text-blue-400 text-lg">
-            Interviewer is speaking...
-          </p>
-        )}
+        {/* Phase UI — wrapped in AnimatePresence for smooth transitions */}
+        <AnimatePresence mode="wait">
+          {phase === "speaking" && (
+            <motion.div
+              key="speaking"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col items-center gap-3 py-4"
+            >
+              <div className="flex items-end gap-1 h-8">
+                {[0.4, 0.7, 1, 0.7, 0.5, 0.8, 0.6, 0.9, 0.4].map((h, i) => (
+                  <div
+                    key={i}
+                    className="w-1 bg-violet-400 rounded-full animate-pulse"
+                    style={{ height: `${h * 100}%`, animationDelay: `${i * 80}ms`, animationDuration: "900ms" }}
+                  />
+                ))}
+              </div>
+              <p className="text-gray-400 text-sm">{character?.name} is speaking…</p>
+            </motion.div>
+          )}
 
-        {phase === "countdown" && (
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-gray-400 text-sm">Get ready to answer in…</p>
-            <div className="w-24 h-24 rounded-full border-4 border-yellow-400 flex items-center justify-center text-6xl font-bold text-yellow-400">
-              {countdown}
-            </div>
-          </div>
-        )}
+          {phase === "countdown" && (
+            <motion.div
+              key="countdown"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <p className="text-gray-400 text-sm tracking-wide">Get ready to answer in</p>
+              <div className="relative w-24 h-24">
+                <svg className="w-24 h-24 -rotate-90" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="44" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
+                  <circle
+                    cx="48" cy="48" r="44" fill="none"
+                    stroke="rgb(139,92,246)"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 44}`}
+                    strokeDashoffset={`${2 * Math.PI * 44 * (1 - countdown / 3)}`}
+                    className="transition-all duration-1000 ease-linear"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-5xl font-black text-white tabular-nums">{countdown}</span>
+                </div>
+              </div>
+              <p className="text-violet-400 text-xs">Your answer will be recorded</p>
+            </motion.div>
+          )}
 
-        {phase === "recording" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-center gap-3">
-              <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-red-400 font-mono text-xl font-bold">
-                {formatTime(timer)}
-              </span>
-              <span className="text-xs uppercase tracking-wide text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-full">
-                emotion: {currentEmotion}
-              </span>
-            </div>
-            <div className="p-5 border border-red-500 rounded-xl bg-red-900/20 min-h-[80px]">
-              <p className="italic text-gray-200">
-                "{transcript || "Listening..."}"
-              </p>
-            </div>
-            <div className="flex justify-center">
-              <button
-                onClick={() => void handleNext()}
-                disabled={isSubmitting}
-                className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition-colors disabled:opacity-60"
-              >
-                {isSubmitting ? "Saving..." : "Submit Answer"}
-              </button>
-            </div>
-          </div>
-        )}
+          {phase === "recording" && (
+            <motion.div
+              key="recording"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="space-y-4 w-full"
+            >
+              {/* Status bar */}
+              <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-red-500/8 border border-red-500/20">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                  </span>
+                  <span className="text-red-400 text-xs font-semibold uppercase tracking-wider">Recording</span>
+                </div>
+                <span className="font-mono text-white text-sm font-bold tabular-nums">{formatTime(timer)}</span>
+                <span className="text-xs text-gray-500 font-medium capitalize">{currentEmotion}</span>
+              </div>
 
-        {/* Silence modal */}
-        {phase === "silent" && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full text-center space-y-4">
-              <p className="text-2xl">🤫</p>
-              <h2 className="text-xl font-bold">Are you still there?</h2>
-              <p className="text-gray-400 text-sm">
-                No speech detected for 10 seconds.
-              </p>
-              <div className="flex gap-3 justify-center pt-2">
-                <button
-                  onClick={resumeRecording}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-500 transition-colors"
+              {/* Transcript box */}
+              <div className="min-h-[100px] p-5 rounded-2xl bg-white/4 border border-white/8 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                <motion.p
+                  key={transcript.slice(-20)}
+                  initial={{ opacity: 0.7 }}
+                  animate={{ opacity: 1 }}
+                  className={`text-base leading-relaxed transition-colors duration-300 ${transcript ? "text-gray-100" : "text-gray-600 italic"}`}
                 >
-                  Continue Recording
-                </button>
+                  {transcript || "Listening for your answer…"}
+                </motion.p>
+              </div>
+
+              <div className="flex justify-center">
                 <button
-                  onClick={() => void endInterview()}
-                  className="bg-gray-700 text-white px-6 py-2 rounded-full font-semibold hover:bg-gray-600 transition-colors"
+                  onClick={() => void handleNext()}
+                  disabled={isSubmitting}
+                  className="px-8 py-3 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  End Interview
+                  {isSubmitting ? "Saving…" : currentIdx < questions.length - 1 ? "Next Question" : "Finish Interview"}
                 </button>
               </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Silence modal */}
+        <AnimatePresence>
+          {phase === "silent" && (
+            <motion.div
+              key="silence"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="bg-white/6 backdrop-blur-xl border border-white/10 rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_80px_rgba(0,0,0,0.6)]"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
+                  <span className="text-amber-400 text-xl">⏸</span>
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Still there?</h2>
+                  <p className="text-gray-400 text-sm mt-1">No speech detected for 10 seconds.</p>
+                </div>
+                <div className="flex gap-3 justify-center pt-1">
+                  <button
+                    onClick={resumeRecording}
+                    className="px-6 py-2.5 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-colors"
+                  >
+                    Continue
+                  </button>
+                  <button
+                    onClick={() => void endInterview()}
+                    className="px-6 py-2.5 rounded-2xl bg-white/8 hover:bg-white/12 border border-white/10 text-gray-300 font-semibold text-sm transition-colors"
+                  >
+                    End Interview
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

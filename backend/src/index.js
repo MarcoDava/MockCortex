@@ -132,6 +132,8 @@ Keep language professional, concise, and supportive. Return ONLY JSON: [{"questi
 // --- ROUTE: Get Feedback ---
 app.post('/api/get-feedback', async (req, res) => {
   const { sessionData, resumeSummary } = req.body;
+  console.log('[get-feedback] sessionData:', JSON.stringify(sessionData)?.slice(0, 500));
+  console.log('[get-feedback] resumeSummary:', resumeSummary ? 'present' : 'absent');
   if (!genAI) {
     return res.status(503).json({ error: 'Server misconfigured: GEMINI_API_KEY is missing' });
   }
@@ -141,18 +143,22 @@ app.post('/api/get-feedback', async (req, res) => {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const prompt = `You are a calm, professional interview coach.${resumeContext} Review these interview answers: ${JSON.stringify(sessionData)}. Score each answer 0-10. Be constructive and encouraging while still specific. A decent answer with correct intent should score at least 6. Reserve scores below 4 for clearly incorrect or empty answers. If a resume was provided, note whether the answer aligns with stated experience. Return ONLY JSON: [{"score":number,"critique":"text"}]`;
+    console.log('[get-feedback] Calling Gemini...');
     const result = await model.generateContent(prompt);
     const text = result.response.text().replace(/```json|```/g, '').trim();
+    console.log('[get-feedback] Gemini response:', text.slice(0, 300));
     let feedback;
     try {
       feedback = JSON.parse(text);
-    } catch {
+    } catch (parseErr) {
+      console.error('[get-feedback] JSON parse failed:', parseErr.message, 'Raw text:', text.slice(0, 500));
       return res.status(500).json({ error: 'Failed to parse feedback from AI response' });
     }
     res.json({ feedback });
   } catch (error) {
-    console.error('Feedback Error:', error);
-    res.status(500).json({ error: 'Feedback failed' });
+    console.error('[get-feedback] Error:', error.message || error);
+    console.error('[get-feedback] Stack:', error.stack);
+    res.status(500).json({ error: `Feedback failed: ${error.message || 'Unknown error'}` });
   }
 });
 
