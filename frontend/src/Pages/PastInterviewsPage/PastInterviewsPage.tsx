@@ -1,102 +1,95 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
-import { convexGetBySession, convexTouchSession } from "@/lib/convexFunctions";
+import { convexGetMyInterviews, convexTouchMyInterviews } from "@/lib/convexFunctions";
 import type { InterviewSession } from "@/types";
 
 const scoreBadgeClass = (score: number) => {
-  if (score >= 8) return "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300";
-  if (score >= 6) return "bg-green-500/12 border border-green-500/25 text-green-400";
-  if (score >= 4) return "bg-amber-500/12 border border-amber-500/25 text-amber-300";
-  return "bg-red-500/12 border border-red-500/25 text-red-400";
+  if (score >= 8) return "border-[rgba(35,122,76,0.18)] bg-[rgba(228,248,237,0.8)] text-[rgb(46,108,73)]";
+  if (score >= 6) return "border-[rgba(162,121,36,0.18)] bg-[rgba(255,244,215,0.8)] text-[rgb(145,99,27)]";
+  if (score >= 4) return "border-[rgba(188,116,51,0.18)] bg-[rgba(255,238,222,0.82)] text-[rgb(154,77,37)]";
+  return "border-[rgba(196,67,50,0.18)] bg-[rgba(255,239,234,0.84)] text-[rgb(145,51,34)]";
 };
 
 const PastInterviewsPage = () => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
-
-  const sessionId = localStorage.getItem("mockcortex_session_id") ?? "";
-  const touchSession = useMutation(convexTouchSession);
-
-  const convexHistory = useQuery(convexGetBySession, { sessionId });
-
-  const [localHistory, setLocalHistory] = useState<InterviewSession[]>([]);
-  useEffect(() => {
-    const saved = localStorage.getItem("interviewHistory");
-    if (saved) setLocalHistory(JSON.parse(saved) as InterviewSession[]);
-  }, []);
+  const touchMyInterviews = useMutation(convexTouchMyInterviews);
+  const history = useQuery(convexGetMyInterviews, {});
 
   useEffect(() => {
-    if (!sessionId) return;
-    void touchSession({ sessionId });
-  }, [sessionId, touchSession]);
+    void touchMyInterviews({});
+  }, [touchMyInterviews]);
 
-  const history: InterviewSession[] =
-    convexHistory != null ? (convexHistory as InterviewSession[]) : localHistory;
-
-  const isLoading = convexHistory === undefined;
+  const isLoading = history === undefined;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen gap-3 text-white">
-        <div className="relative w-8 h-8">
-          <div className="absolute inset-0 rounded-full border-2 border-white/8" />
-          <div className="absolute inset-0 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
-        </div>
-        <p className="text-gray-400">Loading history…</p>
-      </div>
-    );
-  }
-
-  if (history.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 text-center px-6 pointer-events-auto">
-        <div className="relative w-24 h-24">
-          <div className="absolute inset-0 rounded-3xl bg-violet-600/10 border border-violet-500/20" />
-          <div className="absolute inset-3 rounded-2xl bg-violet-600/15 border border-violet-500/25" />
-          <div className="absolute inset-6 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-            <span className="text-violet-400 text-xl font-light">+</span>
+      <div className="pointer-events-auto flex min-h-[60vh] items-center justify-center">
+        <div className="surface-panel flex items-center gap-4 px-6 py-5">
+          <div className="h-8 w-8 rounded-full border-2 border-[rgba(201,98,49,0.2)] border-t-[rgb(182,86,41)] animate-spin" />
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Loading session archive</p>
+            <p className="text-sm text-slate-600">Pulling your interview history from Convex.</p>
           </div>
         </div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-semibold text-white">No interviews yet</h2>
-          <p className="text-gray-500 text-sm max-w-xs leading-relaxed">
-            Your recordings, scores, and feedback will appear here after your first interview.
-          </p>
-        </div>
-        <Link
-          to="/characters"
-          className="px-6 py-2.5 rounded-2xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]"
-        >
-          Start your first interview
-        </Link>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen p-6 pointer-events-auto">
-      <div className="max-w-3xl mx-auto space-y-3">
-        <h1 className="text-3xl font-bold text-white mb-8">Past Interviews</h1>
+  if (!history || history.length === 0) {
+    return (
+      <div className="pointer-events-auto mx-auto max-w-3xl">
+        <div className="surface-panel-strong p-8 text-center">
+          <span className="eyebrow">Session archive</span>
+          <h1 className="section-title mt-4 text-slate-950">No sessions saved yet.</h1>
+          <p className="body-muted mx-auto mt-3 max-w-xl">
+            Once you finish an interview, the scorecards and critiques will appear here so you can compare attempts instead of starting from memory.
+          </p>
+          <Link to="/characters" className="primary-button mt-8">
+            Start your first interview
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
-        {history.map((session, i) => (
-          <div
-            key={i}
-            className="rounded-2xl border border-white/8 bg-white/4 overflow-hidden hover:border-white/14 transition-all duration-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-          >
+  const sessions = history as InterviewSession[];
+
+  return (
+    <div className="page-stack pointer-events-auto">
+      <section className="surface-panel-strong p-6 sm:p-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="space-y-3">
+            <span className="eyebrow">Session archive</span>
+            <h1 className="section-title text-slate-950">Your practice history, organized like work product.</h1>
+            <p className="body-muted max-w-2xl">
+              Strong prep is cumulative. Use the archive to compare scores, inspect question-level critique, and watch how your delivery changes across attempts.
+            </p>
+          </div>
+          <Link to="/characters" className="secondary-button">
+            Start another session
+          </Link>
+        </div>
+      </section>
+
+      <section className="grid gap-4">
+        {sessions.map((session, index) => (
+          <article key={index} className="surface-panel overflow-hidden">
             <button
-              onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/4 transition-colors text-left"
+              onClick={() => setExpandedIdx(expandedIdx === index ? null : index)}
+              className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left"
             >
-              <div className="space-y-0.5">
-                <p className="text-violet-400 font-medium text-sm">{session.date}</p>
-                <p className="text-gray-500 text-xs">{session.jobTitle}</p>
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[rgb(154,77,37)]">{session.date}</p>
+                <h2 className="text-xl font-semibold text-slate-950">{session.jobTitle}</h2>
+                <p className="text-sm text-slate-600">{session.interviewerName ?? "MockCortex interviewer"}</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold ${scoreBadgeClass(session.avgScore)}`}>
+                <span className={`rounded-full border px-3 py-1 text-sm font-bold ${scoreBadgeClass(session.avgScore)}`}>
                   {session.avgScore}/10
                 </span>
                 <svg
-                  className={`w-4 h-4 text-gray-600 transition-transform duration-200 ${expandedIdx === i ? "rotate-180" : ""}`}
+                  className={`h-5 w-5 text-slate-500 transition-transform ${expandedIdx === index ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -106,24 +99,28 @@ const PastInterviewsPage = () => {
               </div>
             </button>
 
-            {expandedIdx === i && session.feedback && session.feedback.length > 0 && (
-              <div className="border-t border-white/6 divide-y divide-white/5">
-                {session.feedback.map((f, j) => (
-                  <div key={j} className="px-5 py-4 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-500 text-xs font-medium uppercase tracking-wide">Q{j + 1}</span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${scoreBadgeClass(f.score)}`}>
-                        {f.score}/10
-                      </span>
+            {expandedIdx === index && session.feedback && session.feedback.length > 0 && (
+              <div className="border-t border-[rgba(107,83,57,0.12)] px-5 py-5">
+                <div className="grid gap-4">
+                  {session.feedback.map((feedback, feedbackIndex) => (
+                    <div key={feedbackIndex} className="rounded-[24px] border border-[rgba(107,83,57,0.12)] bg-white/80 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-[0.24em] text-[rgb(154,77,37)]">
+                          Question {feedbackIndex + 1}
+                        </span>
+                        <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${scoreBadgeClass(feedback.score)}`}>
+                          {feedback.score}/10
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm leading-7 text-slate-700">{feedback.critique}</p>
                     </div>
-                    <p className="text-gray-300 text-sm leading-relaxed">{f.critique}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
-          </div>
+          </article>
         ))}
-      </div>
+      </section>
     </div>
   );
 };

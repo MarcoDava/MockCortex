@@ -1,42 +1,43 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+
 :root {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: oklch(0.95 0 0);
-  background-color: oklch(0.08 0.005 265);
+  color-scheme: light;
+  color: oklch(0.18 0.02 255);
+  background-color: oklch(0.97 0.014 78);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  /* Always-dark design tokens */
-  --radius: 0.75rem;
-  --background: oklch(0.08 0.005 265);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.11 0.006 265);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.11 0.006 265);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.58 0.22 290);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.15 0.007 265);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.15 0.007 265);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.15 0.007 265);
-  --accent-foreground: oklch(0.95 0 0);
+  --radius: 1rem;
+  --background: oklch(0.97 0.014 78);
+  --foreground: oklch(0.18 0.02 255);
+  --card: oklch(0.99 0.008 84 / 88%);
+  --card-foreground: oklch(0.18 0.02 255);
+  --popover: oklch(0.99 0.008 84 / 96%);
+  --popover-foreground: oklch(0.18 0.02 255);
+  --primary: oklch(0.58 0.15 35);
+  --primary-foreground: oklch(0.98 0.01 95);
+  --secondary: oklch(0.93 0.013 78);
+  --secondary-foreground: oklch(0.24 0.024 255);
+  --muted: oklch(0.95 0.012 82);
+  --muted-foreground: oklch(0.48 0.03 250);
+  --accent: oklch(0.91 0.03 45);
+  --accent-foreground: oklch(0.25 0.03 250);
   --destructive: oklch(0.62 0.22 25);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 8%);
-  --ring: oklch(0.58 0.22 290 / 40%);
+  --border: oklch(0.84 0.022 78 / 80%);
+  --input: oklch(0.84 0.022 78 / 80%);
+  --ring: oklch(0.58 0.15 35 / 40%);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -93,62 +94,111 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
 @layer base {
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+    min-width: 320px;
+    background-image:
+      radial-gradient(circle at top left, rgba(201, 98, 49, 0.18), transparent 28%),
+      radial-gradient(circle at 85% 15%, rgba(11, 73, 117, 0.18), transparent 24%),
+      linear-gradient(180deg, rgba(255, 251, 241, 0.98), rgba(247, 238, 222, 0.96));
+    background-attachment: fixed;
   }
-  /* Visible focus rings for keyboard nav — AI almost always forgets these */
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    letter-spacing: -0.04em;
+  }
+
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
   textarea:focus-visible,
   [role="button"]:focus-visible {
-    @apply outline-none ring-2 ring-violet-500/70 ring-offset-2 ring-offset-black;
+    @apply outline-none ring-2 ring-amber-600/60 ring-offset-2;
+    ring-offset-color: rgba(255, 249, 240, 0.95);
   }
-  /* Button active state — missing in AI-generated UIs */
+
   button,
   a {
     @apply transition-transform duration-100;
   }
+
   button:active:not(:disabled),
   a:active {
     @apply scale-[0.97];
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply relative min-h-screen overflow-x-hidden text-slate-900;
+  }
+
+  .app-frame {
+    @apply relative z-10 mx-auto w-full max-w-6xl px-4 pb-16 pt-28 sm:px-6 lg:px-8;
+  }
+
+  .page-stack {
+    @apply space-y-10;
+  }
+
+  .surface-panel {
+    @apply rounded-[28px] border border-[rgba(107,83,57,0.16)] bg-[rgba(255,252,246,0.78)] shadow-[0_24px_80px_rgba(87,58,32,0.08)] backdrop-blur-xl;
+  }
+
+  .surface-panel-strong {
+    @apply rounded-[32px] border border-[rgba(107,83,57,0.16)] bg-[rgba(255,250,243,0.92)] shadow-[0_30px_100px_rgba(87,58,32,0.12)] backdrop-blur-xl;
+  }
+
+  .ink-panel {
+    @apply rounded-[30px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(14,25,35,0.96),rgba(21,34,47,0.94))] text-white shadow-[0_30px_90px_rgba(13,26,39,0.34)];
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-[rgba(201,98,49,0.18)] bg-[rgba(255,247,239,0.82)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.28em] text-[rgb(154,77,37)];
+  }
+
+  .hero-display {
+    font-family: "Fraunces", Georgia, serif;
+    @apply text-5xl leading-[0.92] sm:text-6xl lg:text-7xl;
+  }
+
+  .section-title {
+    font-family: "Fraunces", Georgia, serif;
+    @apply text-3xl leading-tight sm:text-4xl;
+  }
+
+  .body-muted {
+    @apply text-sm leading-7 text-slate-600 sm:text-base;
+  }
+
+  .editorial-grid {
+    background-image:
+      linear-gradient(rgba(130, 109, 84, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(130, 109, 84, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .primary-button {
+    @apply inline-flex items-center justify-center rounded-full bg-[rgb(182,86,41)] px-5 py-3 text-sm font-bold text-[rgb(255,247,239)] shadow-[0_14px_30px_rgba(182,86,41,0.24)] transition-all hover:-translate-y-0.5 hover:bg-[rgb(164,76,34)];
+  }
+
+  .secondary-button {
+    @apply inline-flex items-center justify-center rounded-full border border-[rgba(42,59,78,0.14)] bg-[rgba(255,252,246,0.72)] px-5 py-3 text-sm font-bold text-slate-800 transition-all hover:-translate-y-0.5 hover:bg-[rgba(255,248,240,0.95)];
   }
 }

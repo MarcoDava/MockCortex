@@ -1,45 +1,59 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { motion, AnimatePresence } from "motion/react";
+import { useAuth0 } from "@auth0/auth0-react";
+import { useQuery } from "convex/react";
+import { AnimatePresence, motion } from "motion/react";
+import { convexCurrentUser } from "@/lib/convexFunctions";
 import logo from "../assets/logo.png";
 
 const links = [
-  { to: "/", label: "Home" },
+  { to: "/", label: "Overview" },
   { to: "/characters", label: "Interviewers" },
-  { to: "/pastinterviews", label: "History" },
+  { to: "/pastinterviews", label: "Session Archive" },
 ];
 
 const Navbar = () => {
   const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isAuthenticated, loginWithRedirect, logout } = useAuth0();
+  const currentUser = useQuery(convexCurrentUser, {});
+
+  const canUseFreeInterview = Boolean(currentUser && !currentUser.freeInterviewUsed);
+  const statusLabel =
+    currentUser === undefined
+      ? "Syncing account"
+      : canUseFreeInterview
+        ? "1 free session available"
+        : "Free session redeemed";
 
   return (
     <motion.header
-      initial={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: -16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className="fixed top-4 left-4 right-4 z-50"
+      transition={{ duration: 0.45, ease: "easeOut" }}
+      className="fixed left-0 right-0 top-0 z-50 px-4 pt-4 sm:px-6"
     >
-      <div className="mx-auto max-w-5xl rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-lg shadow-black/40">
-        <div className="flex items-center justify-between px-5 py-3">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 cursor-pointer">
-            <img src={logo} alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-            <span className="font-bold text-white text-base tracking-tight">MockCortex</span>
+      <div className="mx-auto max-w-6xl rounded-[28px] border border-[rgba(107,83,57,0.16)] bg-[rgba(255,251,244,0.86)] px-4 py-3 shadow-[0_18px_70px_rgba(87,58,32,0.08)] backdrop-blur-xl sm:px-5">
+        <div className="flex items-center justify-between gap-4">
+          <Link to="/" className="flex items-center gap-3">
+            <img src={logo} alt="MockCortex logo" className="h-11 w-11 rounded-2xl object-cover shadow-[0_10px_24px_rgba(15,23,42,0.14)]" />
+            <div className="space-y-0.5">
+              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-[rgb(154,77,37)]">MockCortex</p>
+              <p className="text-sm font-medium text-slate-700">Interview studio for serious practice</p>
+            </div>
           </Link>
 
-          {/* Desktop nav links */}
-          <nav className="hidden sm:flex items-center gap-1">
+          <nav className="hidden items-center gap-1 md:flex">
             {links.map(({ to, label }) => {
               const active = pathname === to;
               return (
                 <Link
                   key={to}
                   to={to}
-                  className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-white/10 text-white"
-                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                      ? "bg-[rgba(24,40,58,0.92)] text-white"
+                      : "text-slate-600 hover:bg-[rgba(24,40,58,0.06)] hover:text-slate-900"
                   }`}
                 >
                   {label}
@@ -48,27 +62,44 @@ const Navbar = () => {
             })}
           </nav>
 
-          {/* Desktop CTA */}
-          <Link
-            to="/characters"
-            className="hidden sm:block px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors cursor-pointer"
-          >
-            Start Interview
-          </Link>
+          <div className="hidden items-center gap-3 md:flex">
+            {isAuthenticated && (
+              <div className="rounded-full border border-[rgba(42,59,78,0.12)] bg-white/70 px-4 py-2 text-right">
+                <p className="text-sm font-semibold text-slate-800">{currentUser?.name ?? "Signed in"}</p>
+                <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">{statusLabel}</p>
+              </div>
+            )}
 
-          {/* Mobile menu button */}
+            {isAuthenticated ? (
+              <button
+                onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                className="secondary-button"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={() => void loginWithRedirect({ appState: { returnTo: "/characters" } })}
+                className="primary-button"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
+
           <button
-            onClick={() => setMenuOpen((v) => !v)}
-            className="sm:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+            onClick={() => setMenuOpen((value) => !value)}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(42,59,78,0.12)] bg-white/80 text-slate-800 md:hidden"
             aria-label="Toggle menu"
           >
-            <span className={`block w-5 h-0.5 bg-white transition-transform duration-200 ${menuOpen ? "translate-y-2 rotate-45" : ""}`} />
-            <span className={`block w-5 h-0.5 bg-white transition-opacity duration-200 ${menuOpen ? "opacity-0" : ""}`} />
-            <span className={`block w-5 h-0.5 bg-white transition-transform duration-200 ${menuOpen ? "-translate-y-2 -rotate-45" : ""}`} />
+            <div className="flex flex-col gap-1.5">
+              <span className={`block h-0.5 w-5 bg-current transition-transform ${menuOpen ? "translate-y-2 rotate-45" : ""}`} />
+              <span className={`block h-0.5 w-5 bg-current transition-opacity ${menuOpen ? "opacity-0" : ""}`} />
+              <span className={`block h-0.5 w-5 bg-current transition-transform ${menuOpen ? "-translate-y-2 -rotate-45" : ""}`} />
+            </div>
           </button>
         </div>
 
-        {/* Mobile dropdown */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
@@ -76,33 +107,51 @@ const Navbar = () => {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="overflow-hidden sm:hidden"
+              className="overflow-hidden md:hidden"
             >
-              <div className="flex flex-col items-center gap-1 px-4 pb-4">
-                {links.map(({ to, label }) => {
-                  const active = pathname === to;
-                  return (
-                    <Link
-                      key={to}
-                      to={to}
-                      onClick={() => setMenuOpen(false)}
-                      className={`w-full text-center px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer ${
-                        active
-                          ? "bg-white/10 text-white"
-                          : "text-gray-400 hover:text-white hover:bg-white/5"
-                      }`}
-                    >
-                      {label}
-                    </Link>
-                  );
-                })}
-                <Link
-                  to="/characters"
-                  onClick={() => setMenuOpen(false)}
-                  className="w-full text-center mt-1 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition-colors cursor-pointer"
-                >
-                  Start Interview
-                </Link>
+              <div className="mt-4 space-y-3 border-t border-[rgba(107,83,57,0.14)] pt-4">
+                <div className="grid gap-2">
+                  {links.map(({ to, label }) => {
+                    const active = pathname === to;
+                    return (
+                      <Link
+                        key={to}
+                        to={to}
+                        onClick={() => setMenuOpen(false)}
+                        className={`rounded-2xl px-4 py-3 text-sm font-semibold ${
+                          active
+                            ? "bg-[rgba(24,40,58,0.92)] text-white"
+                            : "bg-white/70 text-slate-700"
+                        }`}
+                      >
+                        {label}
+                      </Link>
+                    );
+                  })}
+                </div>
+
+                {isAuthenticated && (
+                  <div className="rounded-2xl border border-[rgba(42,59,78,0.12)] bg-white/70 px-4 py-3">
+                    <p className="text-sm font-semibold text-slate-800">{currentUser?.name ?? "Signed in"}</p>
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">{statusLabel}</p>
+                  </div>
+                )}
+
+                {isAuthenticated ? (
+                  <button
+                    onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+                    className="secondary-button w-full"
+                  >
+                    Sign Out
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => void loginWithRedirect({ appState: { returnTo: "/characters" } })}
+                    className="primary-button w-full"
+                  >
+                    Sign In
+                  </button>
+                )}
               </div>
             </motion.div>
           )}

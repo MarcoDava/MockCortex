@@ -10,5 +10,17 @@ services:
         sync: false
       - key: ELEVENLABS_API_KEY
         sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: ADDITIONAL_ALLOWED_ORIGINS
+        sync: false
+      - key: SESSION_SIGNING_SECRET
+        sync: false
+      - key: SESSION_POW_DIFFICULTY
+        sync: false
+      - key: BRAIN_SERVICE_URL
+        sync: false
+      - key: BRAIN_SERVICE_API_KEY
+        sync: false
       - key: PORT
         value: 10000

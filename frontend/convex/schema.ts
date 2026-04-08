@@ -2,9 +2,20 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  users: defineTable({
+    tokenIdentifier: v.string(),
+    authSubject: v.string(),
+    name: v.string(),
+    email: v.optional(v.string()),
+    pictureUrl: v.optional(v.string()),
+    freeInterviewUsed: v.boolean(),
+    interviewCredits: v.number(),
+    proUntil: v.optional(v.number()),
+  })
+    .index("by_tokenIdentifier", ["tokenIdentifier"])
+    .index("by_auth_subject", ["authSubject"]),
   interviews: defineTable({
-    // Anonymous session UUID stored in the user's localStorage
-    sessionId: v.string(),
+    tokenIdentifier: v.optional(v.string()),
     date: v.string(),
     jobTitle: v.string(),
     avgScore: v.number(),
@@ -38,6 +49,6 @@ export default defineSchema({
     questions: v.optional(v.array(v.string())),
     interviewerName: v.optional(v.string()),
   })
-    .index("by_session", ["sessionId"])
+    .index("by_tokenIdentifier", ["tokenIdentifier"])
     .index("by_lastAccessedAt", ["lastAccessedAt"]),
 });

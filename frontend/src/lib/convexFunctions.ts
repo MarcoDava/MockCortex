@@ -4,12 +4,12 @@
  * override these with stricter types after `npx convex deploy`.
  */
 import { makeFunctionReference } from "convex/server";
-import type { Feedback, SessionResult } from "@/types";
+import type { Feedback, SessionResult, UserAccount } from "@/types";
 
 export interface StoredInterview {
   _id: string;
   _creationTime: number;
-  sessionId: string;
+  tokenIdentifier?: string;
   date: string;
   jobTitle: string;
   avgScore: number;
@@ -23,7 +23,6 @@ export interface StoredInterview {
 export const convexAddInterview = makeFunctionReference<
   "mutation",
   {
-    sessionId: string;
     date: string;
     jobTitle: string;
     avgScore: number;
@@ -36,26 +35,32 @@ export const convexAddInterview = makeFunctionReference<
   null
 >("interviews:addInterview");
 
-export const convexGetBySession = makeFunctionReference<
+export const convexGetMyInterviews = makeFunctionReference<
   "query",
-  { sessionId: string },
+  Record<string, never>,
   StoredInterview[]
->("interviews:getBySession");
+>("interviews:getMyInterviews");
 
-export const convexGenerateUploadUrl = makeFunctionReference<
+export const convexTouchMyInterviews = makeFunctionReference<
   "mutation",
   Record<string, never>,
-  string
->("interviews:generateUploadUrl");
-
-export const convexGetFileUrl = makeFunctionReference<
-  "mutation",
-  { storageId: string },
-  string | null
->("interviews:getFileUrl");
-
-export const convexTouchSession = makeFunctionReference<
-  "mutation",
-  { sessionId: string },
   null
->("interviews:touchSession");
+>("interviews:touchMyInterviews");
+
+export const convexUpsertCurrentUser = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  UserAccount | null
+>("users:upsertCurrentUser");
+
+export const convexCurrentUser = makeFunctionReference<
+  "query",
+  Record<string, never>,
+  UserAccount | null
+>("users:currentUser");
+
+export const convexConsumeFreeInterview = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  { allowed: true; reason: "free" | "credit" | "pro" }
+>("users:consumeFreeInterview");

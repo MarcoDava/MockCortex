@@ -22,6 +22,8 @@ export interface InterviewSession {
   avgScore: number;
   feedback: Feedback[];
   answers?: SessionResult[];
+  questions?: string[];
+  interviewerName?: string;
 }
 
 export interface Character {
@@ -67,4 +69,17 @@ export interface NeuralEngagementResponse {
   pending: boolean;
   results: NeuralResult[] | null;
   interpretation?: string;
+}
+
+export interface UserAccount {
+  _id: string;
+  _creationTime: number;
+  tokenIdentifier: string;
+  authSubject: string;
+  name: string;
+  email?: string;
+  pictureUrl?: string;
+  freeInterviewUsed: boolean;
+  interviewCredits: number;
+  proUntil?: number;
 }

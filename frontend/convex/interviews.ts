@@ -1,10 +1,24 @@
+import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
-import { v } from "convex/values";
 
-/** Save a completed interview session to the database. */
+type AuthContext = {
+  auth: {
+    getUserIdentity: () => Promise<{
+      tokenIdentifier: string;
+    } | null>;
+  };
+};
+
+async function getIdentityOrThrow(ctx: AuthContext) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) {
+    throw new ConvexError("Not authenticated");
+  }
+  return identity;
+}
+
 export const addInterview = mutation({
   args: {
-    sessionId: v.string(),
     date: v.string(),
     jobTitle: v.string(),
     avgScore: v.number(),
@@ -38,36 +52,40 @@ export const addInterview = mutation({
     interviewerName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await getIdentityOrThrow(ctx);
     await ctx.db.insert("interviews", {
-      ...args,
+      tokenIdentifier: identity.tokenIdentifier,
+      date: args.date,
+      jobTitle: args.jobTitle,
+      avgScore: args.avgScore,
       lastAccessedAt: args.lastAccessedAt ?? Date.now(),
+      feedback: args.feedback,
+      answers: args.answers,
+      questions: args.questions,
+      interviewerName: args.interviewerName,
     });
   },
 });
 
-/** Generate a short-lived upload URL for Convex file storage. */
-export const generateUploadUrl = mutation({
+export const getMyInterviews = query({
   args: {},
   handler: async (ctx) => {
-    return ctx.storage.generateUploadUrl();
+    const identity = await getIdentityOrThrow(ctx);
+    return ctx.db
+      .query("interviews")
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .order("desc")
+      .collect();
   },
 });
 
-/** Resolve a storage id to a serving URL for browser playback. */
-export const getFileUrl = mutation({
-  args: { storageId: v.id("_storage") },
-  handler: async (ctx, { storageId }) => {
-    return ctx.storage.getUrl(storageId);
-  },
-});
-
-/** Refresh inactivity timestamp for all sessions rows. */
-export const touchSession = mutation({
-  args: { sessionId: v.string() },
-  handler: async (ctx, { sessionId }) => {
+export const touchMyInterviews = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await getIdentityOrThrow(ctx);
     const items = await ctx.db
       .query("interviews")
-      .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
+      .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
       .collect();
 
     await Promise.all(
@@ -80,19 +98,6 @@ export const touchSession = mutation({
   },
 });
 
-/** Fetch all past interviews for a given anonymous session, newest first. */
-export const getBySession = query({
-  args: { sessionId: v.string() },
-  handler: async (ctx, { sessionId }) => {
-    return ctx.db
-      .query("interviews")
-      .withIndex("by_session", (q) => q.eq("sessionId", sessionId))
-      .order("desc")
-      .collect();
-  },
-});
-
-/** Internal cron mutation to purge stale recordings and records. */
 export const deleteInactiveInterviews = internalMutation({
   args: {},
   handler: async (ctx) => {

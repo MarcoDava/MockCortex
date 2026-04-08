@@ -1,9 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { useMutation } from "convex/react";
-import { API_BASE } from "@/lib/api";
-import { convexGenerateUploadUrl, convexGetFileUrl } from "@/lib/convexFunctions";
+import { apiFetch } from "@/lib/api";
 import { storeVideoBlob } from "@/lib/videoStore";
 import type { Character, EmotionSample, Question, SessionResult } from "@/types";
 
@@ -43,8 +41,6 @@ const InterviewPage = () => {
   const [currentEmotion, setCurrentEmotion] = useState("neutral");
 
   const navigate = useNavigate();
-  const generateUploadUrl = useMutation(convexGenerateUploadUrl);
-  const getFileUrl = useMutation(convexGetFileUrl);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -264,30 +260,6 @@ const InterviewPage = () => {
     });
   }, []);
 
-  const uploadAnswerAudio = useCallback(
-    async (blob: Blob): Promise<{ audioUrl?: string; audioStorageId?: string }> => {
-      try {
-        const uploadUrl = await generateUploadUrl({});
-        const uploadRes = await fetch(uploadUrl, {
-          method: "POST",
-          headers: { "Content-Type": blob.type || "audio/webm" },
-          body: blob,
-        });
-        if (!uploadRes.ok) return {};
-        const { storageId } = (await uploadRes.json()) as { storageId?: string };
-        if (!storageId) return {};
-        const resolvedUrl = await getFileUrl({ storageId });
-        return {
-          audioStorageId: storageId,
-          audioUrl: resolvedUrl ?? undefined,
-        };
-      } catch {
-        return {};
-      }
-    },
-    [generateUploadUrl, getFileUrl]
-  );
-
   // Silence detection: >10 s without speech during recording
   useEffect(() => {
     if (phase === "recording") {
@@ -316,7 +288,7 @@ const InterviewPage = () => {
       if (!character) return;
       setIsSpeaking(true);
       try {
-        const res = await fetch(`${API_BASE}/api/ask-question`, {
+        const res = await apiFetch(`/api/ask-question`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question: text, voiceId: character.id }),
@@ -400,15 +372,16 @@ const InterviewPage = () => {
       stopAudioRecorder(),
       stopVideoRecorder(currentIdx),
     ]);
-    const uploadMeta = blob ? await uploadAnswerAudio(blob) : {};
+    if (blob) {
+      void blob;
+    }
 
     return {
       question: questions[currentIdx]?.question ?? "",
       answer: transcript,
-      ...uploadMeta,
       emotionTimeline: answerTimelineRef.current,
     };
-  }, [currentIdx, questions, stopAudioRecorder, stopVideoRecorder, stopEmotionTracking, transcript, uploadAnswerAudio]);
+  }, [currentIdx, questions, stopAudioRecorder, stopVideoRecorder, stopEmotionTracking, transcript]);
 
   const handleNext = useCallback(async () => {
     if (isSubmitting) return;

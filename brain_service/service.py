@@ -25,8 +25,7 @@ import matplotlib
 matplotlib.use("Agg")  # non-interactive backend — must be set before pyplot import
 import matplotlib.pyplot as plt
 import numpy as np
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
@@ -38,6 +37,8 @@ logger = logging.getLogger(__name__)
 _model = None
 _fsaverage5 = None
 _destrieux = None
+MAX_TEXT_LENGTH = 4000
+MAX_AUDIO_BYTES = 10 * 1024 * 1024
 
 
 def _load_resources():
@@ -65,13 +66,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MockCortex Brain Service", lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["POST"],
-    allow_headers=["*"],
-)
-
 
 # ---------------------------------------------------------------------------
 # Request / Response models
@@ -95,6 +89,14 @@ class AnalyzeResponse(BaseModel):
     score: int
     brainImageBase64: str
     regions: list[BrainRegion]
+
+
+def _require_api_key(x_brain_service_api_key: str | None):
+    expected = os.environ.get("BRAIN_SERVICE_API_KEY", "").strip()
+    if not expected:
+        raise HTTPException(status_code=503, detail="Brain service API key is not configured")
+    if x_brain_service_api_key != expected:
+        raise HTTPException(status_code=401, detail="Invalid brain service API key")
 
 
 # ---------------------------------------------------------------------------
@@ -189,9 +191,15 @@ def _generate_brain_image(preds: np.ndarray) -> str:
 # ---------------------------------------------------------------------------
 
 @app.post("/analyze", response_model=AnalyzeResponse)
-async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
+async def analyze(
+    req: AnalyzeRequest,
+    x_brain_service_api_key: str | None = Header(default=None),
+) -> AnalyzeResponse:
+    _require_api_key(x_brain_service_api_key)
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text must not be empty")
+    if len(req.text) > MAX_TEXT_LENGTH:
+        raise HTTPException(status_code=413, detail="text is too large")
 
     # Write transcript to a temp .txt file (TRIBE v2 requires a file path)
     with tempfile.NamedTemporaryFile(
@@ -221,14 +229,23 @@ async def analyze(req: AnalyzeRequest) -> AnalyzeResponse:
 
 
 @app.post("/analyze-audio", response_model=AnalyzeResponse)
-async def analyze_audio(req: AnalyzeAudioRequest) -> AnalyzeResponse:
+async def analyze_audio(
+    req: AnalyzeAudioRequest,
+    x_brain_service_api_key: str | None = Header(default=None),
+) -> AnalyzeResponse:
+    _require_api_key(x_brain_service_api_key)
     if not req.audioBase64.strip():
         raise HTTPException(status_code=400, detail="audioBase64 must not be empty")
 
     import base64
     import subprocess
 
-    audio_bytes = base64.b64decode(req.audioBase64)
+    try:
+        audio_bytes = base64.b64decode(req.audioBase64, validate=True)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="audioBase64 must be valid base64") from exc
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="audio payload is too large")
 
     # Determine original extension from MIME type
     ext_map = {

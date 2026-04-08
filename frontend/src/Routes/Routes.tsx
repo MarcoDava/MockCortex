@@ -6,6 +6,8 @@ import InterviewPage from "../Pages/InterviewPage/InterviewPage";
 import JobDescriptionPage from "../Pages/JobDescriptionPage/JobDescriptionPage";
 import PastInterviewsPage from "../Pages/PastInterviewsPage/PastInterviewsPage";
 import CharactersPage from "../Pages/CharactersPage/CharactersPage";
+import SignInPage from "../Pages/SignInPage/SignInPage";
+import ProtectedRoute from "../Components/ProtectedRoute";
 
 export const router = createBrowserRouter([
     {
@@ -13,11 +15,12 @@ export const router = createBrowserRouter([
         element: <App />,
         children: [
             { path: "/", element: <HomePage /> },
-            { path: "feedback", element: <FeedbackPage /> },
-            { path: "jobdescription", element: <JobDescriptionPage /> },
-            { path: "interview", element: <InterviewPage /> },
-            { path: "pastinterviews", element: <PastInterviewsPage /> },
-            { path: "characters", element: <CharactersPage /> },
+            { path: "signin", element: <SignInPage /> },
+            { path: "feedback", element: <ProtectedRoute><FeedbackPage /></ProtectedRoute> },
+            { path: "jobdescription", element: <ProtectedRoute><JobDescriptionPage /></ProtectedRoute> },
+            { path: "interview", element: <ProtectedRoute><InterviewPage /></ProtectedRoute> },
+            { path: "pastinterviews", element: <ProtectedRoute><PastInterviewsPage /></ProtectedRoute> },
+            { path: "characters", element: <ProtectedRoute><CharactersPage /></ProtectedRoute> },
         ],
     },
 ]);

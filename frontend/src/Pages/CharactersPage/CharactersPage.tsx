@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
-import { API_BASE } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 
 export const INTERVIEWERS = [
   {
@@ -10,8 +10,7 @@ export const INTERVIEWERS = [
     key: "jon",
     img: "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800",
     description: "Confident male interviewer with a clear and steady delivery.",
-    tag: "Male Voice",
-    tagColor: "text-violet-300 bg-violet-500/10 border-violet-500/20",
+    tag: "Steady and direct",
   },
   {
     id: "zGjIP4SZlMnY9m93k97r",
@@ -19,8 +18,7 @@ export const INTERVIEWERS = [
     key: "hope",
     img: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=800",
     description: "Warm female interviewer voice tuned for clarity and calm pacing.",
-    tag: "Female Voice",
-    tagColor: "text-purple-300 bg-purple-500/10 border-purple-500/20",
+    tag: "Warm and calm",
   },
 ];
 
@@ -54,7 +52,7 @@ const CharactersPage = () => {
 
   const previewVoice = async (char: Interviewer) => {
     try {
-      const res = await fetch(`${API_BASE}/api/ask-question`, {
+      const res = await apiFetch("/api/ask-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -63,9 +61,9 @@ const CharactersPage = () => {
         }),
       });
       const blob = await res.blob();
-      new Audio(URL.createObjectURL(blob)).play();
+      void new Audio(URL.createObjectURL(blob)).play();
     } catch {
-      // Non-fatal
+      // Non-fatal preview failure.
     }
   };
 
@@ -75,7 +73,7 @@ const CharactersPage = () => {
     setCloneError(null);
     setCloningKey(char.key);
     try {
-      const res = await fetch(`${API_BASE}/api/clone-voice-youtube`, {
+      const res = await apiFetch("/api/clone-voice-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ youtubeUrl: url, interviewerName: char.name }),
@@ -103,7 +101,7 @@ const CharactersPage = () => {
       const dataUrl = reader.result as string;
       const audioBase64 = dataUrl.split(",")[1];
       try {
-        const res = await fetch(`${API_BASE}/api/clone-voice`, {
+        const res = await apiFetch("/api/clone-voice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -126,139 +124,133 @@ const CharactersPage = () => {
   };
 
   return (
-    <div className="min-h-screen px-6 pb-20 pointer-events-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+    <div className="page-stack pointer-events-auto">
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-4xl mx-auto"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="surface-panel-strong p-6 sm:p-8"
       >
-        {/* Header */}
-        <div className="text-center mb-12 space-y-3">
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-[1.1]">
-            Choose your{" "}
-            <span className="bg-gradient-to-r from-violet-400 to-rose-400 bg-clip-text text-transparent">
-              interviewer voice
-            </span>
-          </h1>
-          <p className="text-gray-400 text-base max-w-md mx-auto">
-            Click a card to select. Optionally upload an MP3 or paste a YouTube link to clone any voice.
+        <div className="max-w-3xl space-y-4">
+          <span className="eyebrow">Interviewer selection</span>
+          <h1 className="section-title text-slate-950">Choose the voice that sets the pressure level.</h1>
+          <p className="body-muted max-w-2xl">
+            Each interviewer is intentionally distinct. Preview the voice, then keep the default profile or clone a custom sample if you want a more realistic rehearsal.
           </p>
         </div>
 
         {cloneError && (
-          <p className="mb-8 text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-xl px-4 py-3 max-w-md mx-auto text-center">
+          <div className="mt-6 rounded-[22px] border border-[rgba(196,67,50,0.18)] bg-[rgba(255,239,234,0.84)] px-4 py-3 text-sm text-[rgb(145,51,34)]">
             {cloneError}
-          </p>
+          </div>
         )}
 
-        {/* Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-          {INTERVIEWERS.map((char, i) => {
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          {INTERVIEWERS.map((char, index) => {
             const isCloning = cloningKey === char.key;
             const hasClone = Boolean(clonedVoices[char.key]);
 
             return (
-              <motion.div
+              <motion.article
                 key={char.id}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                onClick={() => !isCloning && selectCharacter(char)}
-                className="group relative flex flex-col items-center p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-violet-500/60 hover:bg-violet-600/5 transition-all duration-300 cursor-pointer hover:shadow-[0_0_40px_rgba(139,92,246,0.15)]"
+                transition={{ duration: 0.4, delay: index * 0.1, ease: "easeOut" }}
+                className="surface-panel overflow-hidden"
               >
-                {/* Character tag */}
-                <span className={`absolute top-4 right-4 text-xs font-semibold px-2.5 py-1 rounded-full border ${char.tagColor}`}>
-                  {char.tag}
-                </span>
+                <div className="flex flex-col gap-6 p-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <img
+                        src={char.img}
+                        alt={char.name}
+                        className="h-24 w-24 rounded-[24px] object-cover shadow-[0_18px_30px_rgba(15,23,42,0.12)]"
+                        referrerPolicy="no-referrer"
+                      />
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.26em] text-[rgb(154,77,37)]">{char.tag}</p>
+                        <h2 className="text-2xl font-semibold text-slate-950">{char.name}</h2>
+                        <p className="text-sm leading-6 text-slate-600">{char.description}</p>
+                      </div>
+                    </div>
 
-                {/* Avatar */}
-                <div className="relative mb-5">
-                  <div className="w-28 h-28 rounded-2xl overflow-hidden ring-2 ring-white/10 group-hover:ring-violet-500/50 transition-all duration-300">
-                    <img src={char.img} alt={char.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
+                    {hasClone && !isCloning && (
+                      <span className="rounded-full border border-[rgba(35,122,76,0.18)] bg-[rgba(228,248,237,0.8)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[rgb(46,108,73)]">
+                        Custom active
+                      </span>
+                    )}
                   </div>
-                </div>
 
-                <h2 className="text-xl font-bold text-white text-center">{char.name}</h2>
-                <p className="text-gray-400 mt-1.5 text-sm text-center leading-relaxed">{char.description}</p>
-
-                {hasClone && !isCloning && (
-                  <span className="mt-3 text-xs bg-green-500/10 border border-green-500/30 text-green-400 px-3 py-1 rounded-full font-medium">
-                    Custom voice active
-                  </span>
-                )}
-                {isCloning && (
-                  <span className="mt-3 text-xs text-yellow-400 flex items-center gap-1.5">
-                    <span className="w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-                    Cloning voice…
-                  </span>
-                )}
-
-                {/* Actions */}
-                <div
-                  className="mt-5 flex flex-col gap-2 w-full"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => previewVoice(char)}
-                    disabled={isCloning}
-                    className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white text-sm font-medium transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    Preview voice
-                  </button>
-
-                  <input
-                    type="file"
-                    accept="audio/mp3,audio/wav,audio/*"
-                    className="hidden"
-                    ref={(el) => { fileInputRefs.current[char.key] = el; }}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleFileChange(char, file);
-                      e.target.value = "";
-                    }}
-                  />
-                  <button
-                    onClick={() => fileInputRefs.current[char.key]?.click()}
-                    disabled={isCloning}
-                    className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white text-xs font-medium transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    {hasClone ? "Replace voice sample" : "Upload voice sample"}
-                  </button>
-
-                  {/* YouTube URL clone */}
-                  <div className="flex gap-1.5">
-                    <input
-                      type="url"
-                      placeholder="youtube.com/watch?v=..."
-                      value={ytUrls[char.key] ?? ""}
-                      onChange={(e) => setYtUrls((prev) => ({ ...prev, [char.key]: e.target.value }))}
-                      disabled={isCloning}
-                      className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-violet-500/60 disabled:opacity-40"
-                    />
-                    <button
-                      onClick={() => handleYouTubeClone(char)}
-                      disabled={isCloning || !ytUrls[char.key]?.trim()}
-                      className="shrink-0 px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors disabled:opacity-40 cursor-pointer"
-                    >
-                      {isCloning ? (
-                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
-                      ) : "YT"}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button onClick={() => void previewVoice(char)} disabled={isCloning} className="secondary-button">
+                      Preview voice
+                    </button>
+                    <button onClick={() => !isCloning && selectCharacter(char)} disabled={isCloning} className="primary-button">
+                      Select interviewer
                     </button>
                   </div>
-                </div>
 
-                {/* Select arrow hint */}
-                <div className="mt-4 w-full pt-4 border-t border-white/8">
-                  <p className="text-center text-xs text-gray-600 group-hover:text-violet-400 transition-colors font-medium">
-                    Select and continue
-                  </p>
+                  <div className="rounded-[24px] border border-[rgba(42,59,78,0.12)] bg-[rgba(250,245,236,0.85)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Clone from your own sample</p>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">Upload a voice clip or paste a YouTube link to personalize the session.</p>
+                      </div>
+                      {isCloning && (
+                        <span className="rounded-full border border-[rgba(201,98,49,0.18)] bg-[rgba(255,247,239,0.84)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[rgb(154,77,37)]">
+                          Cloning
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid gap-3">
+                      <input
+                        type="file"
+                        accept="audio/mp3,audio/wav,audio/*"
+                        className="hidden"
+                        ref={(el) => {
+                          fileInputRefs.current[char.key] = el;
+                        }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileChange(char, file);
+                          e.target.value = "";
+                        }}
+                      />
+
+                      <button
+                        onClick={() => fileInputRefs.current[char.key]?.click()}
+                        disabled={isCloning}
+                        className="secondary-button w-full"
+                      >
+                        {hasClone ? "Replace voice sample" : "Upload voice sample"}
+                      </button>
+
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <input
+                          type="url"
+                          placeholder="youtube.com/watch?v=..."
+                          value={ytUrls[char.key] ?? ""}
+                          onChange={(e) => setYtUrls((prev) => ({ ...prev, [char.key]: e.target.value }))}
+                          disabled={isCloning}
+                          className="min-h-12 flex-1 rounded-full border border-[rgba(42,59,78,0.14)] bg-white/80 px-4 text-sm text-slate-800 placeholder:text-slate-400"
+                        />
+                        <button
+                          onClick={() => void handleYouTubeClone(char)}
+                          disabled={isCloning || !ytUrls[char.key]?.trim()}
+                          className="primary-button min-w-36 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Clone from YouTube
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
+              </motion.article>
             );
           })}
         </div>
-      </motion.div>
+      </motion.section>
     </div>
   );
 };
