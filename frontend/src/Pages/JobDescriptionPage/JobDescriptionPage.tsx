@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { apiFetch } from "@/lib/api";
 import { parseLocalStorageJson, clonedVoiceKey } from "@/lib/utils";
 import { convexCurrentUser } from "@/lib/convexFunctions";
-import type { Character, ResumeSummary } from "@/types";
+import type { Character, Question, ResumeSummary } from "@/types";
 import { INTERVIEWERS } from "@/Pages/CharactersPage/CharactersPage";
 
 const JobDescriptionPage = () => {
@@ -18,6 +18,9 @@ const JobDescriptionPage = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const currentUser = useQuery(convexCurrentUser, {});
+
+  const [generatedQuestions, setGeneratedQuestions] = useState<Question[] | null>(null);
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<number>>(new Set());
 
   const [voiceKey, setVoiceKey] = useState<string>(() => {
     return localStorage.getItem("selectedInterviewerKey") ?? "jon";
@@ -129,10 +132,11 @@ const JobDescriptionPage = () => {
         }
         throw new Error(message);
       }
-      const data = (await response.json()) as { questions?: unknown[] };
-      if (data.questions) {
-        localStorage.setItem("interviewQuestions", JSON.stringify(data.questions));
-        navigate("/interview");
+      const data = (await response.json()) as { questions?: Question[] };
+      if (data.questions && data.questions.length > 0) {
+        const allIndices = new Set(data.questions.map((_, i) => i));
+        setGeneratedQuestions(data.questions);
+        setSelectedQuestions(allIndices);
       } else {
         throw new Error("No questions returned");
       }
@@ -142,6 +146,34 @@ const JobDescriptionPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleQuestion = (idx: number) => {
+    setSelectedQuestions((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
+
+  const confirmQuestions = () => {
+    if (!generatedQuestions) return;
+    const chosen = generatedQuestions.filter((_, i) => selectedQuestions.has(i));
+    if (chosen.length === 0) return;
+    localStorage.setItem("interviewQuestions", JSON.stringify(chosen));
+    navigate("/interview");
+  };
+
+  const TYPE_LABEL: Record<string, string> = {
+    intro: "Intro",
+    resume: "Resume",
+    behavioral: "Behavioral",
+    technical: "Technical",
+    situational: "Situational",
   };
 
   const accountBanner =
@@ -305,12 +337,84 @@ const JobDescriptionPage = () => {
               disabled={!isValid || isLoading}
               className="primary-button disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? "Generating questions..." : "Generate interview"}
+              {isLoading ? "Generating questions..." : "Generate questions"}
             </button>
-            <p className="text-sm leading-6 text-slate-500">Minimum 20 characters required. We will save the generated script locally and move you into the timed interview flow.</p>
+            <p className="text-sm leading-6 text-slate-500">Minimum 20 characters required. You will be able to review and select which questions to include before starting.</p>
           </div>
         </div>
       </section>
+
+      {generatedQuestions && (
+        <section className="surface-panel p-6 sm:p-8">
+          <div className="space-y-5">
+            <div>
+              <span className="eyebrow">Review questions</span>
+              <h2 className="mt-2 text-xl font-semibold text-slate-950">Choose which questions to include</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-600">Toggle any question off to skip it during the interview. At least one must be selected.</p>
+            </div>
+
+            <div className="space-y-3">
+              {generatedQuestions.map((q, i) => {
+                const on = selectedQuestions.has(i);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => toggleQuestion(i)}
+                    className={`w-full rounded-[22px] border px-5 py-4 text-left transition-all ${
+                      on
+                        ? "border-[rgba(42,59,78,0.18)] bg-white shadow-[0_2px_8px_rgba(42,59,78,0.06)]"
+                        : "border-[rgba(42,59,78,0.08)] bg-white/40 opacity-50"
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                        on
+                          ? "border-[rgb(154,77,37)] bg-[rgb(154,77,37)]"
+                          : "border-[rgba(42,59,78,0.22)] bg-transparent"
+                      }`}>
+                        {on && (
+                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="rounded-full border border-[rgba(42,59,78,0.12)] bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                            {TYPE_LABEL[q.type] ?? q.type}
+                          </span>
+                          <span className="text-xs text-slate-400">Q{i + 1}</span>
+                        </div>
+                        <p className="text-sm leading-6 text-slate-800">{q.question}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                onClick={confirmQuestions}
+                disabled={selectedQuestions.size === 0}
+                className="primary-button disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Start interview ({selectedQuestions.size} question{selectedQuestions.size !== 1 ? "s" : ""})
+              </button>
+              <button
+                onClick={() => {
+                  setGeneratedQuestions(null);
+                  setSelectedQuestions(new Set());
+                }}
+                className="rounded-[22px] border border-[rgba(42,59,78,0.14)] bg-white/80 px-5 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:-translate-y-0.5"
+              >
+                Regenerate
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 };
