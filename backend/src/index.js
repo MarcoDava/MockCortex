@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
@@ -12,6 +13,7 @@ dotenv.config();
 
 const app = express();
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
 const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
 const hasElevenLabsKey = Boolean(process.env.ELEVENLABS_API_KEY?.trim());
@@ -77,14 +79,21 @@ const cloneMimeTypes = new Set([
   'audio/mp4',
 ]);
 
-const rateLimitStore = new Map();
 const challengeStore = new Map();
 const requestProofStore = new Map();
 
-function addSecurityHeaders(_req, res, next) {
+function addSecurityHeaders(req, res, next) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+  if (isSecureRequest(req)) {
+    res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  }
   next();
 }
 
@@ -126,28 +135,31 @@ function requireAllowedOrigin(req, res, next) {
   next();
 }
 
-function createRateLimiter({ windowMs, max, keySuffix }) {
-  return (req, res, next) => {
-    const key = `${keySuffix}:${getRequestIp(req)}`;
-    const now = Date.now();
-    const entry = rateLimitStore.get(key);
+function rateLimitKey(req) {
+  const ip = getRequestIp(req);
+  // Bind to session when available so authenticated abuse doesn't lock out
+  // others sharing an IP, and anonymous abuse is still throttled per-IP.
+  const scope = typeof req.sessionId === 'string' && req.sessionId ? `s:${req.sessionId}` : `ip:${ipKeyGenerator(ip)}`;
+  return scope;
+}
 
-    if (!entry || entry.resetAt <= now) {
-      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-      next();
-      return;
-    }
-
-    if (entry.count >= max) {
-      const retryAfterSeconds = Math.ceil((entry.resetAt - now) / 1000);
-      res.setHeader('Retry-After', String(retryAfterSeconds));
-      res.status(429).json({ error: 'Too many requests. Please slow down and try again shortly.' });
-      return;
-    }
-
-    entry.count += 1;
-    next();
-  };
+function createRateLimiter({ windowMs, max, name }) {
+  return rateLimit({
+    windowMs,
+    limit: max,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    keyGenerator: rateLimitKey,
+    // Don't count failed auth/validation against the legitimate user
+    skipFailedRequests: false,
+    validate: { trustProxy: true, xForwardedForHeader: true },
+    handler: (_req, res) => {
+      res.status(429).json({
+        error: 'Too many requests. Please slow down and try again shortly.',
+        scope: name,
+      });
+    },
+  });
 }
 
 function estimateBase64Bytes(base64Value) {
@@ -514,7 +526,13 @@ app.use(addSecurityHeaders);
 app.use(cors({ origin: corsOriginValidator, methods: ['GET', 'POST', 'OPTIONS'], credentials: true }));
 app.use(express.json({ limit: '12mb' }));
 
-app.get('/api/health', (_req, res) => {
+// Global defense-in-depth limiter applied to every API request before any
+// per-route limiter. Prevents sustained floods across the whole surface.
+const globalApiLimiter = createRateLimiter({ windowMs: 60_000, max: 120, name: 'global' });
+const healthLimiter = createRateLimiter({ windowMs: 60_000, max: 30, name: 'health' });
+app.use('/api', globalApiLimiter);
+
+app.get('/api/health', healthLimiter, (_req, res) => {
   res.json({
     ok: true,
     config: {
@@ -527,12 +545,12 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api', requireAllowedOrigin);
 
-const challengeLimiter = createRateLimiter({ windowMs: 60_000, max: 12, keySuffix: 'challenge' });
-const bootstrapLimiter = createRateLimiter({ windowMs: 60_000, max: 6, keySuffix: 'bootstrap' });
-const requestProofLimiter = createRateLimiter({ windowMs: 60_000, max: 40, keySuffix: 'request-proof' });
-const defaultLimiter = createRateLimiter({ windowMs: 60_000, max: 20, keySuffix: 'default' });
-const expensiveLimiter = createRateLimiter({ windowMs: 60_000, max: 6, keySuffix: 'expensive' });
-const cloneLimiter = createRateLimiter({ windowMs: 10 * 60_000, max: 2, keySuffix: 'clone' });
+const challengeLimiter = createRateLimiter({ windowMs: 60_000, max: 12, name: 'challenge' });
+const bootstrapLimiter = createRateLimiter({ windowMs: 60_000, max: 6, name: 'bootstrap' });
+const requestProofLimiter = createRateLimiter({ windowMs: 60_000, max: 40, name: 'request-proof' });
+const defaultLimiter = createRateLimiter({ windowMs: 60_000, max: 20, name: 'default' });
+const expensiveLimiter = createRateLimiter({ windowMs: 60_000, max: 6, name: 'expensive' });
+const cloneLimiter = createRateLimiter({ windowMs: 10 * 60_000, max: 2, name: 'clone' });
 
 app.get('/api/session/challenge', challengeLimiter, (req, res) => {
   pruneExpiredChallenges();
